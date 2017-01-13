@@ -1,8 +1,8 @@
-use master::RemoteDirInfo;
+use master::remote_info::RemoteInfo;
 use std::process::Command;
 use regex::RegexSet;
 
-pub fn run(base_dir: &str, remote_info: &RemoteDirInfo, ignores: &RegexSet) {
+pub fn run(base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) {
     let args = rsync_args(base_dir, remote_info, ignores);
 
     info!("Running initial rsync");
@@ -14,7 +14,7 @@ pub fn run(base_dir: &str, remote_info: &RemoteDirInfo, ignores: &RegexSet) {
     debug!("Finished initial rsync");
 }
 
-fn rsync_args(base_dir: &str, remote_info: &RemoteDirInfo, ignores: &RegexSet) -> Vec<String> {
+fn rsync_args(base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) -> Vec<String> {
     let mut args: Vec<String> = vec!["-azv".to_owned()];
 
     for path in find_rsync_ignore_folders(base_dir, remote_info, ignores) {
@@ -32,7 +32,7 @@ fn rsync_args(base_dir: &str, remote_info: &RemoteDirInfo, ignores: &RegexSet) -
     args
 }
 
-fn find_rsync_ignore_folders(base_dir: &str, remote_info: &RemoteDirInfo, ignores: &RegexSet) -> Vec<String> {
+fn find_rsync_ignore_folders(base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) -> Vec<String> {
     let output = Command::new("find").arg(base_dir).arg("-type").arg("d").output().unwrap_or_else(|e| {
         panic!("failed to run local find: {}", e)
     });
