@@ -6,10 +6,10 @@ extern crate clap;
 extern crate regex;
 
 use clap::{App, ArgMatches};
-use regex::RegexSet;
 
 mod master;
 mod slave;
+mod shared;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -36,48 +36,22 @@ fn run_master(m: &ArgMatches) {
     let remote_dir = m.value_of("remote_dir").unwrap();
     let remote_port = m.value_of("port");
 
-    let ignores = match m.values_of("ignore") {
-        Some(i) => {
-            let mut vec: Vec<String> = i.into_iter().map(|str| str.to_owned()).collect();
-            vec.push("^\\.bindrs.*$".to_owned());
-            process_ignores(&vec)
-        },
-        None => {
-            RegexSet::new(&["^\\.git(?:/[^/]+)*$", "^\\.bindrs.*$"]).unwrap()
-        }
+    let mut ignore_strings: Vec<String> = match m.values_of("ignore") {
+        Some(i) => i.into_iter().map(|str| str.to_owned()).collect(),
+        None => vec![]
     };
 
-    master::run(base_dir, remote_dir, remote_port, ignores)
+    master::run(base_dir, remote_dir, remote_port, &mut ignore_strings)
 }
 
 fn run_slave(m: &ArgMatches) {
     debug!("Running in slave mode");
     let base_dir = m.value_of("base_dir").unwrap();
 
-    let ignores = match m.values_of("ignore") {
-        Some(i) => {
-            let vec = i.into_iter().map(|str| str.to_owned()).collect();
-            process_ignores(&vec)
-        },
-        None => {
-            let tmp: &[&str; 0] = &[];
-            RegexSet::new(tmp).unwrap()
-        }
+    let mut ignore_strings: Vec<String> = match m.values_of("ignore") {
+        Some(i) => i.into_iter().map(|str| str.to_owned()).collect(),
+        None => vec![]
     };
 
-    slave::run(base_dir, ignores)
-}
-
-fn process_ignores(ignores: &Vec<String>) -> RegexSet {
-    let mut regexes: Vec<String> = vec![];
-
-    for i in ignores.iter() {
-        let mut ignore = i.clone();
-        if !(ignore.starts_with("^") && ignore.ends_with("$")) {
-            ignore = format!("^{}(?:/[^/]+)*$", ignore);
-        }
-        regexes.push(ignore)
-    }
-
-    RegexSet::new(&regexes[..]).unwrap()
+    slave::run(base_dir, &mut ignore_strings)
 }

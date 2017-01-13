@@ -38,7 +38,8 @@ fn find_rsync_ignore_folders(base_dir: &str, remote_info: &RemoteInfo, ignores: 
     });
     let mut folders = process_raw_file_list(base_dir, String::from_utf8_lossy(&output.stdout).to_mut());
 
-    let output = remote_info.run_command(&format!("find {} -type d", remote_info.path)).unwrap_or_else(|e| {
+    let cmd = &format!("find {} -type d", remote_info.path);
+    let output = remote_info.generate_command(&mut remote_info.base_command(cmd), cmd).output().unwrap_or_else(|e| {
         panic!("failed to run remote find: {}", e)
     });
 

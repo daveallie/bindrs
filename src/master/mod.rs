@@ -1,35 +1,23 @@
-use regex::{Regex, RegexSet};
+use std::process::Stdio;
 
 pub mod remote_info;
 mod rsync;
 
 use self::remote_info::RemoteInfo;
 
-pub fn run(base_dir: &str, remote_dir: &str, port: Option<&str>, ignores: RegexSet) {
-    let remote_info = get_remote_info(remote_dir, port);
-    rsync::run(base_dir, &remote_info, &ignores)
+pub fn run(base_dir: &str, remote_dir: &str, port: Option<&str>, ignore_strings: &mut Vec<String>) {
+    let ignores = super::shared::helpers::process_ignores(ignore_strings);
+    let remote_info = RemoteInfo::build(remote_dir, port);
+    rsync::run(base_dir, &remote_info, &ignores);
+    start_remote_slave(&remote_info, &ignore_strings);
 }
 
-fn get_remote_info(remote_dir: &str, port: Option<&str>) -> RemoteInfo {
-    let regex = Regex::new("([^@]+)@([^:]+):(.+)").unwrap();
-    if let Some(captures) = regex.captures(remote_dir) {
-        RemoteInfo {
-            is_remote: true,
-            path: captures.get(3).unwrap().as_str().to_owned(),
-            user: captures.get(1).unwrap().as_str().to_owned(),
-            host: captures.get(2).unwrap().as_str().to_owned(),
-            port: match port {
-                Some(p) => p.to_owned(),
-                None => "22".to_owned()
-            }
-        }
-    } else {
-        RemoteInfo {
-            is_remote: false,
-            path: remote_dir.to_owned(),
-            user: "".to_owned(),
-            host: "".to_owned(),
-            port: "".to_owned()
-        }
-    }
+fn start_remote_slave(remote_info: &RemoteInfo, ignores: &Vec<String>) {
+    let ignore_vec: Vec<String> = ignores.iter().map(|i| format!("--ignore \"{}\"", i)).collect();
+    let cmd = format!("bindrs slave {} {}", remote_info.path, ignore_vec.join(" "));
+
+    let mut command = remote_info.generate_command(&mut remote_info.base_command(&cmd), &cmd)
+                                 .stdin(Stdio::piped())
+                                 .stdout(Stdio::piped())
+                                 .spawn().unwrap();
 }
