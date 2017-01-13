@@ -1,0 +1,62 @@
+name: BindRS
+author: Dave Allie
+about: Two way file syncer using platform native notify in Rust
+settings:
+    - SubcommandRequired
+    - ColoredHelp
+    - GlobalVersion
+subcommands:
+    - master:
+        settings:
+            - ColoredHelp
+        about: Runs BindRS in master mode - launches a slave
+        args:
+            - base_dir:
+                help: Local folder path
+                index: 1
+                required: true
+                takes_value: true
+                value_name: BASE DIR
+            - remote_dir:
+                help: Local folder path or folder path over ssh (<remote_user>@<remote_host>:<remote_dir>)
+                index: 2
+                required: true
+                takes_value: true
+                value_name: REMOTE DIR
+            - ignore:
+                help: Ignores a file or regex match
+                short: i
+                long: ignore
+                takes_value: true
+                value_name: FILE
+                multiple: true
+            - port:
+                help: Override SSH port (defaults to 22)
+                short: p
+                long: port
+                takes_value: true
+                value_name: PORT
+            - verbose:
+                help: Log debug lines
+                short: v
+                long: verbose
+    - slave:
+        about: Runs BindRS in slave mode - launched from a master
+        args:
+            - base_dir:
+                help: Local folder path
+                index: 1
+                required: true
+                takes_value: true
+                value_name: BASE DIR
+            - ignore:
+                help: Ignores a file or regex match
+                short: i
+                long: ignore
+                takes_value: true
+                value_name: FILE
+                multiple: true
+            - verbose:
+                help: Log debug lines
+                short: v
+                long: verbose
