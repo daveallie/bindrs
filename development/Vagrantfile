@@ -1,0 +1,36 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+$script = <<SCRIPT
+#!/bin/bash
+
+echo 'Downloading rustup...'
+curl https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init -Os
+
+echo 'Downloading and Installing Rust...'
+chmod +x rustup-init
+printf '1\n' | script --return -c "(sudo -u vagrant HOME=/home/vagrant ./rustup-init > /dev/null) 2>&1 | grep -v '^info:'" /dev/null > /dev/null
+
+echo 'Cleaning up'
+rm rustup-init
+
+echo 'Linking BindRS files to ~/bindrs'
+su vagrant <<EOF
+mkdir -p /home/vagrant/bindrs
+ln -s /bindrs/src /home/vagrant/bindrs
+ln -s /bindrs/Cargo.toml /home/vagrant/bindrs
+ln -s /bindrs/Cargo.lock /home/vagrant/bindrs
+EOF
+SCRIPT
+
+Vagrant.configure(2) do |config|
+  config.vm.box = "bento/ubuntu-16.04"
+  config.vm.provision :shell, inline: $script
+  config.vm.synced_folder "..", "/bindrs"
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+  end
+end
+
+client_vagrantfile = File.expand_path('../Vagrantfile.client', __FILE__)
+load client_vagrantfile if File.exist?(client_vagrantfile)
