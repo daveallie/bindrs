@@ -1,5 +1,7 @@
 use regex::RegexSet;
 
+pub mod dir;
+
 pub fn process_ignores(vec: &mut Vec<String>) -> RegexSet {
     if vec.len() == 0 {
         vec.push("^\\.git(?:/[^/]+)*$".to_owned());
