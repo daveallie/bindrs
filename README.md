@@ -2,6 +2,8 @@
 
 > Two way file syncer using platform native notify in Rust
 
+Rebuilding https://github.com/daveallie/entangler in Rust.
+
 ## Installation
 
 TODO: Describe the installation process
