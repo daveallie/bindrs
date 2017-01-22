@@ -3,6 +3,9 @@ name = "bindrs"
 version = "0.0.1"
 authors = ["Dave Allie <dave@daveallie.com>"]
 
+[profile.release]
+lto = true
+
 [dependencies]
 log = "0.3"
 env_logger = "0.3"
