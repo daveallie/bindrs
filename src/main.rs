@@ -5,6 +5,8 @@ extern crate env_logger;
 extern crate clap;
 extern crate regex;
 extern crate notify;
+extern crate bincode;
+extern crate rustc_serialize;
 
 use clap::{App, ArgMatches};
 

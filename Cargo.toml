@@ -10,8 +10,10 @@ lto = true
 log = "0.3"
 env_logger = "0.3"
 regex = "0.2"
-notify = "~3.0.1"
+notify = "3.0"
+rustc-serialize = "0.3"
+bincode = "0.6"
 
 [dependencies.clap]
-version = "~2.20.0"
+version = "2.20"
 features = ["yaml"]
