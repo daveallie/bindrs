@@ -1,4 +1,4 @@
-# BindRS
+# BindRS :file_folder::link::file_folder:
 
 > Two way file syncer using platform native notify in Rust
 
@@ -15,10 +15,19 @@ TODO: Write usage instructions
 ## Contributing
 
 1. Fork it!
-2. Create your feature branch: `git checkout -b my-new-feature`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin my-new-feature`
-5. Submit a pull request :D
+- Create your feature branch: `git checkout -b my-new-feature`
+- Commit your changes: `git commit -am 'Add some feature'`
+- Push to the branch: `git push origin my-new-feature`
+- Submit a pull request :D
+
+### Development
+
+1. Install [Vagrant](https://www.vagrantup.com/downloads.html)
+- Navigate to the development directory
+- Run `vagrant up`
+- Run `vagrant ssh`
+- Project will be in the `~/bindrs` folder
+- Run `cargo build` to build the source
 
 ## License
 
