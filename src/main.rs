@@ -7,6 +7,8 @@ extern crate regex;
 extern crate notify;
 extern crate bincode;
 extern crate rustc_serialize;
+extern crate byteorder;
+extern crate filetime;
 
 use clap::{App, ArgMatches};
 
