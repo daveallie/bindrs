@@ -28,9 +28,7 @@ fn start_remote_slave(remote_info: &RemoteInfo,
                       -> (ChildStdout, ChildStdin) {
     info!("Starting remote slave");
     let ignore_vec: Vec<String> = ignores.iter().map(|i| format!("--ignore \"{}\"", i)).collect();
-    let cmd = format!("./bindrs slave {} {}",
-                      remote_info.path,
-                      ignore_vec.join(" "));
+    let cmd = format!("bindrs slave {} {}", remote_info.path, ignore_vec.join(" "));
 
     let mut child = remote_info.generate_command(&mut remote_info.base_command(&cmd), &cmd)
         .stdin(Stdio::piped())
@@ -42,17 +40,25 @@ fn start_remote_slave(remote_info: &RemoteInfo,
     let c_stdout = child.stdout.take().unwrap();
     let c_stdin = child.stdin.take().unwrap();
 
-    // let _ = child.wait();
-
     (c_stdout, c_stdin)
 }
 
 fn validate_remote_info(remote_info: &RemoteInfo) {
-    warn!("TODO: validate_remote_info");
-    // let cmd = format!("[[ -d '{}' ]] && echo 'ok' || echo 'missing'", remote_info.path);
-    // println!("{}", cmd);
-    // let output = remote_info.generate_command(&mut remote_info.base_command(&cmd), &cmd).output().unwrap();
-    // println!("{}", String::from_utf8_lossy(&output.stdout).to_mut());
-    // output.
-    // let base_dir = base_dir.unwrap_or_else(|| panic!("failed to find base directory"));
+    let cmd = "which bindrs &>/dev/null && bindrs -V || echo 'missing'";
+    if !check_cmd_output(remote_info, &cmd) {
+        helpers::error_and_exit("Please install BindRS on the remote machine and add it to the \
+                                 path");
+    }
+
+    let cmd = format!("[[ -d '{}' ]] && echo 'ok' || echo 'missing'",
+                      remote_info.path);
+    if !check_cmd_output(remote_info, &cmd) {
+        helpers::error_and_exit("Remote base path missing");
+    }
+}
+
+fn check_cmd_output(remote_info: &RemoteInfo, cmd: &str) -> bool {
+    let output =
+        remote_info.generate_command(&mut remote_info.base_command(&cmd), &cmd).output().unwrap();
+    String::from_utf8_lossy(&output.stdout) == "ok"
 }
