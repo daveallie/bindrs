@@ -11,16 +11,13 @@ pub fn run(base_dir: &str,
            remote_dir: &str,
            port: Option<&str>,
            ignore_strings: &mut Vec<String>) {
-    let base_dir = helpers::dir::resolve_path(base_dir);
     let ignores = helpers::process_ignores(ignore_strings);
     let remote_info = RemoteInfo::build(remote_dir, port);
 
-    let base_dir = base_dir.unwrap_or_else(|| panic!("failed to find base directory"));
     validate_remote_info(&remote_info);
-
     rsync::run(&base_dir, &remote_info, &ignores);
     let (remote_reader, remote_writer) = start_remote_slave(&remote_info, &ignore_strings);
-    executor::start(base_dir, ignores, remote_reader, remote_writer);
+    executor::start(base_dir.to_owned(), ignores, remote_reader, remote_writer);
 }
 
 fn start_remote_slave(remote_info: &RemoteInfo,

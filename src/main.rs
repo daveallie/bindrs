@@ -17,6 +17,7 @@ extern crate filetime;
 extern crate time;
 
 use clap::{App, ArgMatches};
+use shared::helpers;
 
 mod master;
 mod slave;
@@ -43,26 +44,35 @@ fn main() {
 
 fn run_master(m: &ArgMatches) {
     debug!("Running in master mode");
-    let base_dir = m.value_of("base_dir").unwrap();
+    let base_dir = get_base_dir(m.value_of("base_dir").unwrap());
     let remote_dir = m.value_of("remote_dir").unwrap();
     let remote_port = m.value_of("port");
+    let mut ignore_strings = get_ignore_strings(m);
 
-    let mut ignore_strings: Vec<String> = match m.values_of("ignore") {
-        Some(i) => i.into_iter().map(|str| str.to_owned()).collect(),
-        None => vec![],
-    };
-
-    master::run(base_dir, remote_dir, remote_port, &mut ignore_strings)
+    master::run(&base_dir, remote_dir, remote_port, &mut ignore_strings)
 }
 
 fn run_slave(m: &ArgMatches) {
     debug!("Running in slave mode");
-    let base_dir = m.value_of("base_dir").unwrap();
+    let base_dir = get_base_dir(m.value_of("base_dir").unwrap());
+    let mut ignore_strings = get_ignore_strings(m);
 
-    let mut ignore_strings: Vec<String> = match m.values_of("ignore") {
+    slave::run(&base_dir, &mut ignore_strings)
+}
+
+fn get_ignore_strings(m: &ArgMatches) -> Vec<String> {
+    match m.values_of("ignore") {
         Some(i) => i.into_iter().map(|str| str.to_owned()).collect(),
         None => vec![],
-    };
+    }
+}
 
-    slave::run(base_dir, &mut ignore_strings)
+fn get_base_dir(base_dir: &str) -> String {
+    match helpers::resolve_path(base_dir) {
+        Some(dir) => dir,
+        None => {
+            helpers::error_and_exit("failed to find base directory");
+            "".to_owned()
+        }
+    }
 }

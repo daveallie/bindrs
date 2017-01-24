@@ -68,7 +68,6 @@ fn run_local_watcher<W: Write>(base_dir: String,
 
         let bf = BoundFile::build_from_path_action(&base_dir, p, a);
         let _guard = lock.lock().unwrap();
-        debug!("PROCESSING FILE CHANGE AT: {}", base_dir);
         bf.to_writer(&mut writer);
     }
 }

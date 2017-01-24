@@ -1,6 +1,19 @@
 use regex::RegexSet;
+use std::fs::canonicalize;
+use std::path::Path;
+use std::process::exit;
 
-pub mod dir;
+pub fn resolve_path(dir: &str) -> Option<String> {
+    match canonicalize(Path::new(dir)) {
+        Ok(p) => Some(p.to_string_lossy().into_owned()),
+        Err(_) => None,
+    }
+}
+
+pub fn error_and_exit(msg: &str) {
+    error!("{}", msg);
+    exit(1);
+}
 
 pub fn process_ignores(vec: &mut Vec<String>) -> RegexSet {
     if vec.len() == 0 {

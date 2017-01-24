@@ -68,13 +68,4 @@ impl BindrsWatcher {
             }))
         };
     }
-
-    pub fn unwatch(&mut self) {
-        if self.watcher.is_some() && self.thread.is_some() && self.watch_loop_tx.is_some() {
-            let _ = self.watch_loop_tx.clone().unwrap().send(1);
-            self.thread = None;
-            self.watcher.take().unwrap().unwatch(&self.dir).unwrap();
-            self.watcher = None;
-        }
-    }
 }
