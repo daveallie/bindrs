@@ -6,7 +6,7 @@ pub struct RemoteInfo {
     pub path: String,
     pub user: String,
     pub host: String,
-    pub port: String
+    pub port: String,
 }
 
 impl RemoteInfo {
@@ -20,8 +20,8 @@ impl RemoteInfo {
                 host: captures.get(2).unwrap().as_str().to_owned(),
                 port: match port {
                     Some(p) => p.to_owned(),
-                    None => "22".to_owned()
-                }
+                    None => "22".to_owned(),
+                },
             }
         } else {
             RemoteInfo {
@@ -29,7 +29,7 @@ impl RemoteInfo {
                 path: remote_dir.to_owned(),
                 user: "".to_owned(),
                 host: "".to_owned(),
-                port: "".to_owned()
+                port: "".to_owned(),
             }
         }
     }
@@ -47,13 +47,18 @@ impl RemoteInfo {
 
     pub fn generate_command<'a>(&self, command: &'a mut Command, cmd: &str) -> &'a mut Command {
         if self.is_remote {
-            command.arg("-q").arg(format!("{}@{}", self.user, self.host)).arg("-p").arg(&self.port).arg("-C").arg(cmd)
+            command.arg("-q")
+                .arg(format!("{}@{}", self.user, self.host))
+                .arg("-p")
+                .arg(&self.port)
+                .arg("-C")
+                .arg(cmd)
         } else {
             let iter = cmd.split_whitespace();
             let mut args = vec![];
             for arg in iter.skip(1) {
                 args.push(arg)
-            };
+            }
 
             command.args(&args)
         }

@@ -11,7 +11,7 @@ pub struct BoundFile {
     pub action: u8,
     pub path: String,
     pub mtime: u64,
-    pub contents: Vec<u8>
+    pub contents: Vec<u8>,
 }
 
 impl BoundFile {
@@ -36,14 +36,27 @@ impl BoundFile {
     }
 
     pub fn build_from_path_action(base_dir: &str, path: String, action: u8) -> BoundFile {
-        if action == 0 { // Write or Create
+        if action == 0 {
+            // Write or Create
             let mut vec: Vec<u8> = vec![];
             let mut file = File::open(format!("{}{}", base_dir, path)).unwrap();
             file.read_to_end(&mut vec).unwrap();
-            let mtime = FileTime::from_last_modification_time(&file.metadata().unwrap()).seconds_relative_to_1970();
-            BoundFile {action: action, path: path, mtime: mtime, contents: vec}
-        } else { // Delete
-            BoundFile {action: action, path: path, mtime: 0, contents: vec![]}
+            let mtime = FileTime::from_last_modification_time(&file.metadata().unwrap())
+                .seconds_relative_to_1970();
+            BoundFile {
+                action: action,
+                path: path,
+                mtime: mtime,
+                contents: vec,
+            }
+        } else {
+            // Delete
+            BoundFile {
+                action: action,
+                path: path,
+                mtime: 0,
+                contents: vec![],
+            }
         }
     }
 
@@ -56,7 +69,8 @@ impl BoundFile {
             file_exists = false;
         }
 
-        if self.action == 0 { // Write or Create
+        if self.action == 0 {
+            // Write or Create
             fs::create_dir_all(&full_path.parent().unwrap()).unwrap();
             let mut file = File::create(&full_path).unwrap();
             file.write_all(&self.contents[..]).unwrap();
@@ -65,7 +79,8 @@ impl BoundFile {
             let file_time = FileTime::from_seconds_since_1970(self.mtime, 0);
             filetime::set_file_times(full_path, file_time, file_time).unwrap();
 
-        } else { // Delete
+        } else {
+            // Delete
             if file_exists {
                 fs::remove_file(&full_path).unwrap();
             }

@@ -7,6 +7,7 @@ pub fn run(base_dir: &str, ignore_strings: &mut Vec<String>) {
 
     let base_dir = base_dir.unwrap_or_else(|| panic!("failed to find base directory"));
 
-    let (remote_reader, remote_writer) = (BufReader::new(io::stdin()), BufWriter::new(io::stdout()));
+    let (remote_reader, remote_writer) = (BufReader::new(io::stdin()),
+                                          BufWriter::new(io::stdout()));
     executor::start(base_dir, ignores, remote_reader, remote_writer);
 }

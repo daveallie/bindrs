@@ -10,7 +10,7 @@ pub struct BindrsWatcher {
     ignores: RegexSet,
     watcher: Option<RecommendedWatcher>,
     watch_loop_tx: Option<Sender<u8>>,
-    thread: Option<JoinHandle<()>>
+    thread: Option<JoinHandle<()>>,
 }
 
 impl BindrsWatcher {
@@ -21,7 +21,7 @@ impl BindrsWatcher {
             dir: base_dir.to_owned(),
             ignores: ignores.to_owned(),
             watcher: None,
-            thread: None
+            thread: None,
         }
     }
 
@@ -39,29 +39,31 @@ impl BindrsWatcher {
         self.thread = {
             let dir_length = self.dir.len();
             let ignores = self.ignores.clone();
-            Some(thread::spawn(move || {
-                loop {
-                    let event = notify_rx.recv().unwrap_or_else(|e| panic!("watch error: {:?}", e));
-                    match watch_loop_rx.try_recv() {
-                        Ok(_) | Err(TryRecvError::Disconnected) => break,
-                        Err(TryRecvError::Empty) => ()
-                    };
-                    let actions = match event {
-                        DebouncedEvent::Create(p) |
-                        DebouncedEvent::Write(p) => vec![(0, p)],
-                        DebouncedEvent::Remove(p) => vec![(1, p)],
-                        DebouncedEvent::Rename(p1, p2) => vec![(1, p1), (0, p2)],
-                        _ => vec![]
-                    };
+            Some(thread::spawn(move || loop {
+                let event = notify_rx.recv().unwrap_or_else(|e| panic!("watch error: {:?}", e));
+                match watch_loop_rx.try_recv() {
+                    Ok(_) |
+                    Err(TryRecvError::Disconnected) => break,
+                    Err(TryRecvError::Empty) => (),
+                };
+                let actions = match event {
+                    DebouncedEvent::Create(p) |
+                    DebouncedEvent::Write(p) => vec![(0, p)],
+                    DebouncedEvent::Remove(p) => vec![(1, p)],
+                    DebouncedEvent::Rename(p1, p2) => vec![(1, p1), (0, p2)],
+                    _ => vec![],
+                };
 
-                    let filtered_actions = actions.into_iter().map(|(ref t, ref p)| {
-                        let short_path: String = p.to_str().unwrap().chars().skip(dir_length).collect();
+                let filtered_actions = actions.into_iter()
+                    .map(|(ref t, ref p)| {
+                        let short_path: String =
+                            p.to_str().unwrap().chars().skip(dir_length).collect();
                         (*t as u8, short_path)
-                    }).filter(|&(_, ref short_path)| !ignores.is_match(&short_path));
+                    })
+                    .filter(|&(_, ref short_path)| !ignores.is_match(&short_path));
 
-                    for (ref t, ref p) in filtered_actions {
-                        let _ = final_tx.send((*t, p.to_owned()));
-                    }
+                for (ref t, ref p) in filtered_actions {
+                    let _ = final_tx.send((*t, p.to_owned()));
                 }
             }))
         };

@@ -43,7 +43,7 @@ fn run_master(m: &ArgMatches) {
 
     let mut ignore_strings: Vec<String> = match m.values_of("ignore") {
         Some(i) => i.into_iter().map(|str| str.to_owned()).collect(),
-        None => vec![]
+        None => vec![],
     };
 
     master::run(base_dir, remote_dir, remote_port, &mut ignore_strings)
@@ -55,7 +55,7 @@ fn run_slave(m: &ArgMatches) {
 
     let mut ignore_strings: Vec<String> = match m.values_of("ignore") {
         Some(i) => i.into_iter().map(|str| str.to_owned()).collect(),
-        None => vec![]
+        None => vec![],
     };
 
     slave::run(base_dir, &mut ignore_strings)
