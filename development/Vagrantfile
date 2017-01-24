@@ -10,6 +10,7 @@ mkdir -p /home/vagrant/bindrs
 ln -s /bindrs/src /home/vagrant/bindrs
 ln -s /bindrs/Cargo.toml /home/vagrant/bindrs
 ln -s /bindrs/Cargo.lock /home/vagrant/bindrs
+ln -s /bindrs/development /home/vagrant/bindrs
 EOF
 SCRIPT
 
