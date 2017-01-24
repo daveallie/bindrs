@@ -14,6 +14,7 @@ extern crate bincode;
 extern crate rustc_serialize;
 extern crate byteorder;
 extern crate filetime;
+extern crate time;
 
 use clap::{App, ArgMatches};
 

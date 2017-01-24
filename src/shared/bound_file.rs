@@ -78,7 +78,6 @@ impl BoundFile {
 
             let file_time = FileTime::from_seconds_since_1970(self.mtime, 0);
             filetime::set_file_times(full_path, file_time, file_time).unwrap();
-
         } else {
             // Delete
             if file_exists {
