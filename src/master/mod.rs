@@ -1,8 +1,8 @@
-use std::process::Stdio;
+use self::remote_info::RemoteInfo;
+use super::shared::{helpers, executor};
 use std::{time, thread};
 use std::process::{ChildStdout, ChildStdin};
-use super::shared::{helpers, executor};
-use self::remote_info::RemoteInfo;
+use std::process::Stdio;
 
 pub mod remote_info;
 mod rsync;

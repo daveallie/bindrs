@@ -1,10 +1,10 @@
 use bincode::SizeLimit;
 use bincode::rustc_serialize::{encode, decode};
-use std::io::{Write, BufRead, Read};
-use std::fs::{self, File};
-use std::path::Path;
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
 use filetime::{self, FileTime};
+use std::fs::{self, File};
+use std::io::{Write, BufRead, Read};
+use std::path::Path;
 
 #[derive(RustcEncodable, RustcDecodable, PartialEq)]
 pub struct BoundFile {

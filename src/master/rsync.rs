@@ -1,6 +1,6 @@
 use master::remote_info::RemoteInfo;
-use std::process::Command;
 use regex::RegexSet;
+use std::process::Command;
 
 pub fn run(base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) {
     let args = rsync_args(base_dir, remote_info, ignores);

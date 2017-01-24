@@ -1,5 +1,5 @@
-use std::io::{self, BufReader, BufWriter};
 use super::shared::{executor, helpers};
+use std::io::{self, BufReader, BufWriter};
 
 pub fn run(base_dir: &str, ignore_strings: &mut Vec<String>) {
     let base_dir = helpers::dir::resolve_path(base_dir);

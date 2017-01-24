@@ -1,10 +1,10 @@
-use std::io::{Read, Write, BufWriter, BufReader};
-use std::sync::{Arc, Mutex};
-use std::marker::Send;
-use std::thread;
-use regex::RegexSet;
-use super::watcher::BindrsWatcher;
 use super::bound_file::BoundFile;
+use super::watcher::BindrsWatcher;
+use regex::RegexSet;
+use std::io::{Read, Write, BufWriter, BufReader};
+use std::marker::Send;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(base_dir: String,
                                                                   ignores: RegexSet,

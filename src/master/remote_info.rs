@@ -1,5 +1,5 @@
-use std::process::Command;
 use regex::Regex;
+use std::process::Command;
 
 pub struct RemoteInfo {
     pub is_remote: bool,

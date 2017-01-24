@@ -1,8 +1,8 @@
-use regex::RegexSet;
 use notify::{DebouncedEvent, RecommendedWatcher, Watcher, RecursiveMode, watcher};
-use std::time::Duration;
-use std::thread::{self, JoinHandle};
+use regex::RegexSet;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
 pub struct BindrsWatcher {
     pub rx: Option<Receiver<(u8, String)>>,
