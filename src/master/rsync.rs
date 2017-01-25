@@ -1,18 +1,19 @@
 use master::remote_info::RemoteInfo;
 use regex::RegexSet;
+use slog::Logger;
 use std::process::Command;
 
-pub fn run(base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) {
+pub fn run(log: &Logger, base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) {
     let args = rsync_args(base_dir, remote_info, ignores);
 
-    info!("Running initial rsync");
+    info!(log, "Running initial rsync");
     let output = Command::new("rsync")
         .args(&args)
         .output()
         .unwrap_or_else(|e| panic!("failed to run rsync: {}", e));
 
-    debug!("{}", String::from_utf8_lossy(&output.stdout));
-    debug!("Finished initial rsync");
+    debug!(log, String::from_utf8_lossy(&output.stdout));
+    debug!(log, "Finished initial rsync");
 }
 
 fn rsync_args(base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) -> Vec<String> {

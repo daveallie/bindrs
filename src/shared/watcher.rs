@@ -1,3 +1,4 @@
+use super::bound_file::FileAction;
 use notify::{DebouncedEvent, RecommendedWatcher, Watcher, RecursiveMode, watcher};
 use regex::RegexSet;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
@@ -5,7 +6,7 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 pub struct BindrsWatcher {
-    pub rx: Option<Receiver<(u8, String)>>,
+    pub rx: Option<Receiver<(FileAction, String)>>,
     dir: String,
     ignores: RegexSet,
     watcher: Option<RecommendedWatcher>,
@@ -37,7 +38,7 @@ impl BindrsWatcher {
         self.rx = Some(final_rx);
 
         self.thread = {
-            let dir_length = self.dir.len();
+            let dir_length = self.dir.len() + 1;
             let ignores = self.ignores.clone();
             Some(thread::spawn(move || loop {
                 let event = notify_rx.recv().unwrap_or_else(|e| panic!("watch error: {:?}", e));
@@ -48,22 +49,24 @@ impl BindrsWatcher {
                 };
                 let actions = match event {
                     DebouncedEvent::Create(p) |
-                    DebouncedEvent::Write(p) => vec![(0, p)],
-                    DebouncedEvent::Remove(p) => vec![(1, p)],
-                    DebouncedEvent::Rename(p1, p2) => vec![(1, p1), (0, p2)],
+                    DebouncedEvent::Write(p) => vec![(FileAction::CreateUpdate, p)],
+                    DebouncedEvent::Remove(p) => vec![(FileAction::Delete, p)],
+                    DebouncedEvent::Rename(p1, p2) => {
+                        vec![(FileAction::Delete, p1), (FileAction::CreateUpdate, p2)]
+                    }
                     _ => vec![],
                 };
 
                 let filtered_actions = actions.into_iter()
-                    .map(|(ref t, ref p)| {
+                    .map(|(t, p)| {
                         let short_path: String =
                             p.to_str().unwrap().chars().skip(dir_length).collect();
-                        (*t as u8, short_path)
+                        (t, short_path)
                     })
                     .filter(|&(_, ref short_path)| !ignores.is_match(&short_path));
 
-                for (ref t, ref p) in filtered_actions {
-                    let _ = final_tx.send((*t, p.to_owned()));
+                for (t, p) in filtered_actions {
+                    let _ = final_tx.send((t, p.to_owned()));
                 }
             }))
         };

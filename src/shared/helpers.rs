@@ -1,4 +1,5 @@
 use regex::RegexSet;
+use slog::Logger;
 use std::fs::canonicalize;
 use std::path::Path;
 use std::process::exit;
@@ -10,8 +11,13 @@ pub fn resolve_path(dir: &str) -> Option<String> {
     }
 }
 
-pub fn error_and_exit(msg: &str) {
-    error!("{}", msg);
+pub fn print_error_and_exit(msg: &str) {
+    println!("{}", msg);
+    exit(1);
+}
+
+pub fn log_error_and_exit(log: &Logger, msg: &str) {
+    error!(log, msg);
     exit(1);
 }
 

@@ -7,8 +7,14 @@ use std::io::{Write, BufRead, Read};
 use std::path::Path;
 
 #[derive(RustcEncodable, RustcDecodable, PartialEq)]
+pub enum FileAction {
+    CreateUpdate,
+    Delete,
+}
+
+#[derive(RustcEncodable, RustcDecodable, PartialEq)]
 pub struct BoundFile {
-    pub action: u8,
+    pub action: FileAction,
     pub path: String,
     pub mtime: u64,
     pub contents: Vec<u8>,
@@ -35,11 +41,11 @@ impl BoundFile {
         BoundFile::decode(&vec[..])
     }
 
-    pub fn build_from_path_action(base_dir: &str, path: String, action: u8) -> BoundFile {
-        if action == 0 {
+    pub fn build_from_path_action(base_dir: &str, path: String, action: FileAction) -> BoundFile {
+        if action == FileAction::CreateUpdate {
             // Write or Create
             let mut vec: Vec<u8> = vec![];
-            let mut file = File::open(format!("{}{}", base_dir, path)).unwrap();
+            let mut file = File::open(format!("{}/{}", base_dir, path)).unwrap();
             file.read_to_end(&mut vec).unwrap();
             let mtime = FileTime::from_last_modification_time(&file.metadata().unwrap())
                 .seconds_relative_to_1970();
@@ -61,7 +67,7 @@ impl BoundFile {
     }
 
     pub fn save_to_disk(&self, base_dir: &str) {
-        let full_str_path = format!("{}{}", base_dir, self.path);
+        let full_str_path = format!("{}/{}", base_dir, self.path);
         let full_path = Path::new(&full_str_path);
         let mut file_exists = full_path.exists();
         if file_exists && full_path.is_dir() {
@@ -69,7 +75,7 @@ impl BoundFile {
             file_exists = false;
         }
 
-        if self.action == 0 {
+        if self.action == FileAction::CreateUpdate {
             // Write or Create
             fs::create_dir_all(&full_path.parent().unwrap()).unwrap();
             let mut file = File::create(&full_path).unwrap();

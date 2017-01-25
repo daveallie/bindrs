@@ -1,6 +1,7 @@
 use super::bound_file::BoundFile;
 use super::watcher::BindrsWatcher;
 use regex::RegexSet;
+use slog::Logger;
 use std::io::{Read, Write, BufWriter, BufReader};
 use std::marker::Send;
 use std::path::Path;
@@ -8,7 +9,8 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use time;
 
-pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(base_dir: String,
+pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(log: &Logger,
+                                                                  base_dir: String,
                                                                   ignores: RegexSet,
                                                                   reader: R,
                                                                   writer: W) {
@@ -16,17 +18,23 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(base_dir: Stri
     let lock_clone = lock.clone();
 
     let base_dir_clone = base_dir.clone();
-    let child_1 =
-        thread::spawn(move || { run_local_watcher(base_dir_clone, ignores, writer, lock_clone); });
+    let log_clone = log.clone();
+    let child_1 = thread::spawn(move || {
+        run_local_watcher(&log_clone, base_dir_clone, ignores, writer, lock_clone);
+    });
 
     let base_dir_clone = base_dir.clone();
-    let child_2 = thread::spawn(move || { run_remote_listener(base_dir_clone, reader, lock); });
+    let log_clone = log.clone();
+    let child_2 =
+        thread::spawn(move || { run_remote_listener(&log_clone, base_dir_clone, reader, lock); });
 
     let _ = child_1.join().unwrap();
     let _ = child_2.join().unwrap();
+    info!(log, "BindRS Stopping");
 }
 
-fn run_local_watcher<W: Write>(base_dir: String,
+fn run_local_watcher<W: Write>(log: &Logger,
+                               base_dir: String,
                                ingores: RegexSet,
                                writer: W,
                                lock: Arc<Mutex<Vec<(String, i64, i32)>>>) {
@@ -68,17 +76,20 @@ fn run_local_watcher<W: Write>(base_dir: String,
 
         let bf = BoundFile::build_from_path_action(&base_dir, p, a);
         let _guard = lock.lock().unwrap();
+        debug!(log, "Sending {} to remote", bf.path);
         bf.to_writer(&mut writer);
     }
 }
 
-fn run_remote_listener<R: Read>(base_dir: String,
+fn run_remote_listener<R: Read>(log: &Logger,
+                                base_dir: String,
                                 reader: R,
                                 lock: Arc<Mutex<Vec<(String, i64, i32)>>>) {
     let mut reader = BufReader::new(reader);
     loop {
         let bf = BoundFile::from_reader(&mut reader);
         let mut recent_files = lock.lock().unwrap();
+        debug!(log, "Receiving {} from remote", bf.path);
         bf.save_to_disk(&base_dir);
 
         let (now_s, now_ns) = {
