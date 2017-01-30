@@ -68,6 +68,11 @@ fn validate_remote_info(log: &Logger, remote_info: &RemoteInfo) {
                                     "Please make sure your local and remote versions of BindRS \
                                      match");
     }
+
+    let cmd = format!("test -d {} || echo 'bad'", remote_info.path);
+    if get_cmd_output(remote_info, &cmd) == "bad" {
+        helpers::log_error_and_exit(&log, "Remote directory does not exist, please create it");
+    }
 }
 
 fn get_cmd_output(remote_info: &RemoteInfo, cmd: &str) -> String {
