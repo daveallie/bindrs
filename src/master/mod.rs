@@ -12,13 +12,15 @@ pub fn run(log: &Logger,
            base_dir: &str,
            remote_dir: &str,
            port: Option<&str>,
-           ignore_strings: &mut Vec<String>) {
+           ignore_strings: &mut Vec<String>,
+           verbose_mode: bool) {
     let ignores = helpers::process_ignores(ignore_strings);
     let remote_info = RemoteInfo::build(remote_dir, port);
 
     validate_remote_info(&log, &remote_info);
     rsync::run(&log, &base_dir, &remote_info, &ignores);
-    let (remote_reader, remote_writer) = start_remote_slave(&log, &remote_info, &ignore_strings);
+    let (remote_reader, remote_writer) =
+        start_remote_slave(&log, &remote_info, &ignore_strings, verbose_mode);
     executor::start(&log,
                     base_dir.to_owned(),
                     ignores,
@@ -28,11 +30,16 @@ pub fn run(log: &Logger,
 
 fn start_remote_slave(log: &Logger,
                       remote_info: &RemoteInfo,
-                      ignores: &Vec<String>)
+                      ignores: &Vec<String>,
+                      verbose_mode: bool)
                       -> (ChildStdout, ChildStdin) {
     info!(log, "Starting remote slave");
     let ignore_vec: Vec<String> = ignores.iter().map(|i| format!("--ignore \"{}\"", i)).collect();
-    let cmd = format!("bindrs slave {} {}", remote_info.path, ignore_vec.join(" "));
+    let mut cmd = format!("bindrs slave {} {}", remote_info.path, ignore_vec.join(" "));
+
+    if verbose_mode {
+        cmd += " -v"
+    }
 
     let mut child = remote_info.generate_command(&mut remote_info.base_command(&cmd), &cmd)
         .stdin(Stdio::piped())

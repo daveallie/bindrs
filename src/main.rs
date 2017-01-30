@@ -57,7 +57,8 @@ fn run_master(m: &ArgMatches) {
                 &base_dir,
                 remote_dir,
                 remote_port,
-                &mut ignore_strings)
+                &mut ignore_strings,
+                verbose_mode)
 }
 
 fn run_slave(m: &ArgMatches) {
