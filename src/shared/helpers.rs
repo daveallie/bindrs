@@ -1,5 +1,6 @@
 use regex::RegexSet;
 use slog::Logger;
+use std::{thread, time};
 use std::fs::canonicalize;
 use std::path::Path;
 use std::process::exit;
@@ -18,6 +19,7 @@ pub fn print_error_and_exit(msg: &str) {
 
 pub fn log_error_and_exit(log: &Logger, msg: &str) {
     error!(log, msg);
+    thread::sleep(time::Duration::from_millis(500));
     exit(1);
 }
 
