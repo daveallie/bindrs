@@ -65,7 +65,7 @@ fn run_slave(m: &ArgMatches) {
     let mut ignore_strings = get_ignore_strings(m);
     let verbose_mode = m.is_present("verbose");
 
-    let log = setup_log(&base_dir, verbose_mode, true);
+    let log = setup_log(&base_dir, verbose_mode, false);
     info!(log, "Starting BindRS");
 
     slave::run(&log, &base_dir, &mut ignore_strings)
