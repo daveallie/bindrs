@@ -11,13 +11,13 @@ pub struct RemoteInfo {
 
 impl RemoteInfo {
     pub fn build(remote_dir: &str, port: Option<&str>) -> RemoteInfo {
-        let regex = Regex::new("([^@]+)@([^:]+):(.+)").unwrap();
+        let regex = Regex::new("([^@]+)@([^:]+):(.+)").unwrap(); // Unwrap is safe - hard coded string
         if let Some(captures) = regex.captures(remote_dir) {
             RemoteInfo {
                 is_remote: true,
-                path: captures.get(3).unwrap().as_str().to_owned(),
-                user: captures.get(1).unwrap().as_str().to_owned(),
-                host: captures.get(2).unwrap().as_str().to_owned(),
+                path: captures.get(3).unwrap().as_str().to_owned(), // Unwrap is safe - capture group exists in regex
+                user: captures.get(1).unwrap().as_str().to_owned(), // Unwrap is safe - capture group exists in regex
+                host: captures.get(2).unwrap().as_str().to_owned(), // Unwrap is safe - capture group exists in regex
                 port: match port {
                     Some(p) => p.to_owned(),
                     None => "22".to_owned(),
@@ -39,7 +39,7 @@ impl RemoteInfo {
             Command::new("ssh")
         } else {
             let mut iter = cmd.split_whitespace();
-            let main_cmd = iter.next().unwrap();
+            let main_cmd = iter.next().unwrap_or("");
 
             Command::new(main_cmd)
         }

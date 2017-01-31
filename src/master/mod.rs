@@ -1,9 +1,8 @@
 use self::remote_info::RemoteInfo;
 use super::shared::{helpers, executor};
 use slog::Logger;
-use std::{time, thread};
-use std::process::{ChildStdout, ChildStdin};
-use std::process::Stdio;
+use std::{time, thread, io};
+use std::process::{exit, Stdio, ChildStdout, ChildStdin};
 
 pub mod remote_info;
 mod rsync;
@@ -41,42 +40,65 @@ fn start_remote_slave(log: &Logger,
         cmd += " -v"
     }
 
-    let mut child = remote_info.generate_command(&mut remote_info.base_command(&cmd), &cmd)
+    let mut child = match remote_info.generate_command(&mut remote_info.base_command(&cmd), &cmd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
+        .spawn() {
+        Ok(c) => c,
+        Err(_) => {
+            helpers::log_error_and_exit(log, "Failed to spawn a child");
+            exit(1); // For compilation
+        }
+    };
 
     thread::sleep(time::Duration::new(1, 0));
-    let c_stdout = child.stdout.take().unwrap();
-    let c_stdin = child.stdin.take().unwrap();
+    let c_stdout = child.stdout.take().unwrap(); // Unwrap is safe - provided in child spawn
+    let c_stdin = child.stdin.take().unwrap(); // Unwrap is safe - provided in child spawn
 
     (c_stdout, c_stdin)
 }
 
 fn validate_remote_info(log: &Logger, remote_info: &RemoteInfo) {
-    let cmd = "which bindrs";
-    if get_cmd_output(remote_info, &cmd) == "bindrs not found" {
-        helpers::log_error_and_exit(&log,
-                                    "Please install BindRS on the remote machine and add it to \
-                                     the path");
-    }
+    check_cmd_output(log,
+                     remote_info,
+                     "which bindrs",
+                     "bindrs not found",
+                     false,
+                     "Please install BindRS on the remote machine and add it to the path");
 
-    let cmd = "bindrs -V";
-    if get_cmd_output(remote_info, &cmd) != format!("BindRS {}", ::VERSION) {
-        helpers::log_error_and_exit(&log,
-                                    "Please make sure your local and remote versions of BindRS \
-                                     match");
-    }
+    check_cmd_output(log,
+                     remote_info,
+                     "bindrs -V",
+                     &format!("BindRS {}", ::VERSION),
+                     true,
+                     "Please make sure your local and remote versions of BindRS match");
 
-    let cmd = format!("test -d {} || echo 'bad'", remote_info.path);
-    if get_cmd_output(remote_info, &cmd) == "bad" {
-        helpers::log_error_and_exit(&log, "Remote directory does not exist, please create it");
+    check_cmd_output(log,
+                     remote_info,
+                     &format!("test -d {} || echo 'bad'", remote_info.path),
+                     "bad",
+                     false,
+                     "Remote directory does not exist, please create it");
+}
+
+fn check_cmd_output(log: &Logger,
+                    remote_info: &RemoteInfo,
+                    cmd: &str,
+                    wanted_output: &str,
+                    match_output: bool,
+                    bad_output_error: &str) {
+    match get_cmd_output(remote_info, cmd) {
+        Ok(output) => {
+            if match_output ^ (output == wanted_output) {
+                helpers::log_error_and_exit(&log, bad_output_error);
+            }
+        }
+        Err(_) => helpers::log_error_and_exit(&log, &format!("Failed to run '{}' on remote", cmd)),
     }
 }
 
-fn get_cmd_output(remote_info: &RemoteInfo, cmd: &str) -> String {
-    let output =
-        remote_info.generate_command(&mut remote_info.base_command(&cmd), &cmd).output().unwrap();
-    String::from_utf8_lossy(&output.stdout).trim().to_owned()
+fn get_cmd_output(remote_info: &RemoteInfo, cmd: &str) -> Result<String, io::Error> {
+    let output = try!(remote_info.generate_command(&mut remote_info.base_command(&cmd), &cmd)
+        .output());
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
 }

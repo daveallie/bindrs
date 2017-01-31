@@ -1,25 +1,32 @@
+use super::super::shared::helpers;
 use master::remote_info::RemoteInfo;
 use regex::RegexSet;
 use slog::Logger;
 use std::process::Command;
 
 pub fn run(log: &Logger, base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) {
-    let args = rsync_args(base_dir, remote_info, ignores);
+    let args = rsync_args(log, base_dir, remote_info, ignores);
 
     info!(log, "Running initial rsync");
-    let output = Command::new("rsync")
+    match Command::new("rsync")
         .args(&args)
-        .output()
-        .unwrap_or_else(|e| panic!("failed to run rsync: {}", e));
-
-    debug!(log, String::from_utf8_lossy(&output.stdout));
-    debug!(log, "Finished initial rsync");
+        .output() {
+        Ok(output) => {
+            debug!(log, String::from_utf8_lossy(&output.stdout));
+            debug!(log, "Finished initial rsync");
+        }
+        Err(e) => helpers::log_error_and_exit(log, &format!("Failed to run rsync: {}", e)),
+    }
 }
 
-fn rsync_args(base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) -> Vec<String> {
+fn rsync_args(log: &Logger,
+              base_dir: &str,
+              remote_info: &RemoteInfo,
+              ignores: &RegexSet)
+              -> Vec<String> {
     let mut args: Vec<String> = vec!["-azv".to_owned()];
 
-    for path in find_rsync_ignore_folders(base_dir, remote_info, ignores) {
+    for path in find_rsync_ignore_folders(log, base_dir, remote_info, ignores) {
         args.push("--exclude".to_owned());
         args.push(path);
     }
@@ -34,26 +41,32 @@ fn rsync_args(base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) -> V
     args
 }
 
-fn find_rsync_ignore_folders(base_dir: &str,
+fn find_rsync_ignore_folders(log: &Logger,
+                             base_dir: &str,
                              remote_info: &RemoteInfo,
                              ignores: &RegexSet)
                              -> Vec<String> {
-    let output = Command::new("find")
+    let mut folders = match Command::new("find")
         .arg(base_dir)
         .arg("-type")
         .arg("d")
-        .output()
-        .unwrap_or_else(|e| panic!("failed to run local find: {}", e));
-    let mut folders = process_raw_file_list(base_dir,
-                                            String::from_utf8_lossy(&output.stdout).to_mut());
+        .output() {
+        Ok(o) => process_raw_file_list(base_dir, String::from_utf8_lossy(&o.stdout).to_mut()),
+        Err(e) => {
+            helpers::log_error_and_exit(log, &format!("Failed to run local find: {}", e));
+            vec![]
+        }
+    };
 
     let cmd = &format!("find {} -type d", remote_info.path);
-    let output = remote_info.generate_command(&mut remote_info.base_command(cmd), cmd)
-        .output()
-        .unwrap_or_else(|e| panic!("failed to run remote find: {}", e));
-
-    folders.append(&mut process_raw_file_list(&remote_info.path,
-                                              String::from_utf8_lossy(&output.stdout).to_mut()));
+    match remote_info.generate_command(&mut remote_info.base_command(cmd), cmd)
+        .output() {
+        Ok(o) => {
+            folders.append(&mut process_raw_file_list(&remote_info.path,
+                                                      String::from_utf8_lossy(&o.stdout).to_mut()))
+        }
+        Err(e) => helpers::log_error_and_exit(log, &format!("Failed to run remote find: {}", e)),
+    }
 
     folders.sort();
     folders.dedup();
