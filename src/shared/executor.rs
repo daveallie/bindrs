@@ -1,4 +1,4 @@
-use super::bound_file::BoundFile;
+use super::bound_file::{BoundFile, FileAction};
 use super::watcher::BindrsWatcher;
 use regex::RegexSet;
 use slog::Logger;
@@ -46,9 +46,8 @@ fn run_local_watcher<W: Write>(log: &Logger,
         let (a, p) = rx.recv().unwrap();
         let full_str_path = format!("{}/{}", base_dir, p);
         let full_path = Path::new(&full_str_path);
-        let file_exists = full_path.exists();
 
-        if file_exists && full_path.is_dir() {
+        if a == FileAction::CreateUpdate && full_path.is_dir() {
             continue;
         }
 
