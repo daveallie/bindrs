@@ -44,7 +44,7 @@ fn run_local_watcher<W: Write>(log: &Logger,
     let rx = watcher.rx.unwrap();
     loop {
         let (a, p) = rx.recv().unwrap();
-        let full_str_path = format!("{}{}", base_dir, p);
+        let full_str_path = format!("{}/{}", base_dir, p);
         let full_path = Path::new(&full_str_path);
         let file_exists = full_path.exists();
 
