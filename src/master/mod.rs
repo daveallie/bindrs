@@ -55,8 +55,8 @@ fn start_remote_slave(log: &Logger,
 }
 
 fn validate_remote_info(log: &Logger, remote_info: &RemoteInfo) {
-    let cmd = "which bindrs 2>/dev/null";
-    if get_cmd_output(remote_info, &cmd) == "" {
+    let cmd = "which bindrs";
+    if get_cmd_output(remote_info, &cmd) == "bindrs not found" {
         helpers::log_error_and_exit(&log,
                                     "Please install BindRS on the remote machine and add it to \
                                      the path");
