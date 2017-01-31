@@ -13,7 +13,7 @@ pub fn run(log: &Logger,
            port: Option<&str>,
            ignore_strings: &mut Vec<String>,
            verbose_mode: bool) {
-    let ignores = helpers::process_ignores(ignore_strings);
+    let ignores = helpers::process_ignores(log, ignore_strings);
     let remote_info = RemoteInfo::build(remote_dir, port);
 
     validate_remote_info(&log, &remote_info);
