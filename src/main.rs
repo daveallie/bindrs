@@ -23,7 +23,6 @@ use shared::helpers;
 use slog::{Level, LevelFilter, Logger, Duplicate, DrainExt};
 use std::fs::{self, File};
 use std::path::Path;
-use std::process::exit;
 
 mod master;
 mod slave;
@@ -106,7 +105,7 @@ fn setup_log(base_dir: &str, verbose_mode: bool, master_mode: bool) -> Logger {
         Ok(f) => f,
         Err(_) => {
             helpers::print_error_and_exit("Failed to create log file.");
-            exit(1); // For compilation
+            panic!(); // For compilation
         }
     };
     let stream = slog_stream::stream(file, slog_bunyan::new().build());

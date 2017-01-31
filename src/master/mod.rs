@@ -2,7 +2,7 @@ use self::remote_info::RemoteInfo;
 use super::shared::{helpers, executor};
 use slog::Logger;
 use std::{time, thread, io};
-use std::process::{exit, Stdio, ChildStdout, ChildStdin};
+use std::process::{Stdio, ChildStdout, ChildStdin};
 
 pub mod remote_info;
 mod rsync;
@@ -47,7 +47,7 @@ fn start_remote_slave(log: &Logger,
         Ok(c) => c,
         Err(_) => {
             helpers::log_error_and_exit(log, "Failed to spawn a child");
-            exit(1); // For compilation
+            panic!(); // For compilation
         }
     };
 
