@@ -23,6 +23,7 @@ use shared::helpers;
 use slog::{Level, LevelFilter, Logger, Duplicate, DrainExt};
 use std::fs::{self, File};
 use std::path::Path;
+use std::process::exit;
 
 mod master;
 mod slave;
@@ -44,8 +45,8 @@ fn main() {
 }
 
 fn run_master(m: &ArgMatches) {
-    let base_dir = get_base_dir(m.value_of("base_dir").unwrap());
-    let remote_dir = m.value_of("remote_dir").unwrap();
+    let base_dir = get_base_dir(m.value_of("base_dir").unwrap()); // Unwrap is safe - required by clap
+    let remote_dir = m.value_of("remote_dir").unwrap(); // Unwrap is safe - required by clap
     let remote_port = m.value_of("port");
     let verbose_mode = m.is_present("verbose");
     let mut ignore_strings = get_ignore_strings(m);
@@ -62,7 +63,7 @@ fn run_master(m: &ArgMatches) {
 }
 
 fn run_slave(m: &ArgMatches) {
-    let base_dir = get_base_dir(m.value_of("base_dir").unwrap());
+    let base_dir = get_base_dir(m.value_of("base_dir").unwrap()); // Unwrap is safe - required by clap
     let mut ignore_strings = get_ignore_strings(m);
     let verbose_mode = m.is_present("verbose");
 
@@ -92,12 +93,22 @@ fn get_base_dir(base_dir: &str) -> String {
 fn setup_log(base_dir: &str, verbose_mode: bool, master_mode: bool) -> Logger {
     let mut path_buf = Path::new(base_dir).to_path_buf();
     path_buf.push(".bindrs");
-    fs::create_dir_all(path_buf.as_path()).unwrap();
+
+    match fs::create_dir_all(path_buf.as_path()) {
+        Ok(_) => (),
+        Err(_) => helpers::print_error_and_exit("Failed to create .bindrs directory!"),
+    }
 
     path_buf.push("bindrs");
     path_buf.set_extension("log");
 
-    let file = File::create(path_buf.as_path()).unwrap();
+    let file = match File::create(path_buf.as_path()) {
+        Ok(f) => f,
+        Err(_) => {
+            helpers::print_error_and_exit("Failed to create log file.");
+            exit(1); // For compilation
+        }
+    };
     let stream = slog_stream::stream(file, slog_bunyan::new().build());
 
     let level = match verbose_mode {
