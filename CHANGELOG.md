@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Check for remote bindrs binary, was returning false-positive
 - Bad full path generation causing a crash
+- Removed unwraps in favour of expects and matches
 
 ## [0.0.2] - 2017-01-30
 ### Added
