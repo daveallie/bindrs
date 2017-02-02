@@ -1,6 +1,6 @@
-use super::bound_file::FileAction;
 use notify::{DebouncedEvent, RecommendedWatcher, Watcher, RecursiveMode, watcher};
 use regex::RegexSet;
+use shared::bound_file::FileAction;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;

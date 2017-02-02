@@ -1,5 +1,5 @@
-use self::remote_info::RemoteInfo;
-use super::shared::{helpers, executor};
+use master::remote_info::RemoteInfo;
+use shared::{helpers, executor};
 use slog::Logger;
 use std::{time, thread, io};
 use std::process::{Stdio, ChildStdout, ChildStdin};

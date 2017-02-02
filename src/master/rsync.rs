@@ -1,6 +1,6 @@
-use super::super::shared::helpers;
 use master::remote_info::RemoteInfo;
 use regex::RegexSet;
+use shared::helpers;
 use slog::Logger;
 use std::process::Command;
 

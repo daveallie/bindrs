@@ -1,6 +1,6 @@
-use super::bound_file::{BoundFile, FileAction};
-use super::watcher::BindrsWatcher;
 use regex::RegexSet;
+use shared::bound_file::{BoundFile, FileAction};
+use shared::watcher::BindrsWatcher;
 use slog::Logger;
 use std::io::{Read, Write, BufWriter, BufReader};
 use std::marker::Send;

@@ -1,4 +1,4 @@
-use super::shared::{executor, helpers};
+use shared::{executor, helpers};
 use slog::Logger;
 use std::io::{self, BufReader, BufWriter};
 
