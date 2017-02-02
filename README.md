@@ -4,6 +4,11 @@
 
 Rebuilding https://github.com/daveallie/entangler in Rust.
 
+## TODO
+
+- Add tests (both unit and integration)
+- Add documentation
+
 ## Installation
 
 ### Installation through cargo
@@ -63,11 +68,50 @@ ARGS:
     <REMOTE DIR>    Local folder path or folder path over ssh (<remote_user>@<remote_host>:<remote_dir>)
 ```
 
-TODO: Rest of usage docs
+### Example command
+
+```
+bindrs master -v /some/local/folder user@1.1.1.1:/some/remote/folder -p 2222 -i 'log' -i '^\tmp(?:/[^/]+){2,}$'
+```
+
+#### Command breakdown
+| Command | Meaning |
+| --- | --- |
+| `-v` | Verbose mode |
+| `/some/local/folder` | Local folder |
+| `user@1.1.1.1:/some/remote/folder` | Remote folder on remote host |
+| `-p 2222` | Override SSH port from 22 to 2222 |
+| `-i 'log'` | Ignore the log directory and everything in it |
+| `-i '^\.tmp/[^/]+/.*$'` | Ignore everything in all subdirectories of `.tmp`, but allow things directly in `.tmp` |
 
 ### Ignoring files
 
-TODO: Ignoring files docs
+By default the `.git` folder is ignored, but by defining an custom ignores, that
+is overridden.
+
+There are two ways to ignore files:
+
+#### Ignoring whole directories
+
+Something like `-i 'log'` will ignore the `log` directory and everything in it.
+`-i 'log/debug'` will ignore the `log/debug` directory and everything in it, but
+will sync changes in the root of the `log` directory and other subdirectories of
+the `log` directory.
+
+Some good examples of directories you might like to prevent from syncing are
+things like `log`, `tmp`, `node_modules` and other fast changing directories.
+
+#### Ignoring regex matches
+
+Regex match ignores must start with a `^` and end with a `$`. The regex is tested
+against the relative path, so if you're syncing `/some/folder` and `/some/folder/some/file`
+changes, then `some/file` is what the regex will be tested against.
+
+An example is if you wanted to wanted to ignore all subdirectories of a `.tmp`,
+but allow all things in the root of `.tmp`, then your CLI argument would look
+like: `-i '^\.tmp/[^/]+/.*$'`.
+
+**Note:** You don't need to escape `/`.
 
 ## Contributing
 
