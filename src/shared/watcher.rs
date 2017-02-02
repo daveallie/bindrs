@@ -1,6 +1,8 @@
 use notify::{DebouncedEvent, RecommendedWatcher, Watcher, RecursiveMode, watcher};
 use regex::RegexSet;
 use shared::bound_file::FileAction;
+use shared::helpers;
+use slog::Logger;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -26,13 +28,21 @@ impl BindrsWatcher {
         }
     }
 
-    pub fn watch(&mut self) {
+    pub fn watch(&mut self, log: &Logger) {
         let (final_tx, final_rx) = channel();
         let (notify_tx, notify_rx) = channel();
         let (watch_loop_tx, watch_loop_rx) = channel();
 
-        let mut watcher = watcher(notify_tx, Duration::from_millis(200)).unwrap();
-        watcher.watch(&self.dir, RecursiveMode::Recursive).unwrap();
+        let mut watcher = match watcher(notify_tx, Duration::from_millis(200)) {
+            Ok(w) => w,
+            Err(e) => {
+                helpers::log_error_and_exit(log, &format!("Failed to create watcher: {}", e));
+                panic!(e);
+            }
+        };
+        watcher.watch(&self.dir, RecursiveMode::Recursive).unwrap_or_else(|e| {
+            helpers::log_error_and_exit(log, &format!("Failed to watch {}: {}", self.dir, e))
+        });
         self.watcher = Some(watcher);
         self.watch_loop_tx = Some(watch_loop_tx);
         self.rx = Some(final_rx);
@@ -40,8 +50,12 @@ impl BindrsWatcher {
         self.thread = {
             let dir_length = self.dir.len() + 1;
             let ignores = self.ignores.clone();
+            let log_clone = log.clone();
             Some(thread::spawn(move || loop {
-                let event = notify_rx.recv().unwrap_or_else(|e| panic!("watch error: {:?}", e));
+                let event = notify_rx.recv().unwrap_or_else(|e| {
+                    helpers::log_error_and_exit(&log_clone, &format!("watch error: {:?}", e));
+                    panic!(e);
+                });
                 match watch_loop_rx.try_recv() {
                     Ok(_) |
                     Err(TryRecvError::Disconnected) => break,
@@ -58,10 +72,12 @@ impl BindrsWatcher {
                 };
 
                 let filtered_actions = actions.into_iter()
-                    .map(|(t, p)| {
-                        let short_path: String =
-                            p.to_str().unwrap().chars().skip(dir_length).collect();
-                        (t, short_path)
+                    .filter_map(|(t, p)| match p.to_str() {
+                        Some(path) => {
+                            let short_path: String = path.chars().skip(dir_length).collect();
+                            Some((t, short_path))
+                        }
+                        None => None,
                     })
                     .filter(|&(_, ref short_path)| !ignores.is_match(&short_path));
 

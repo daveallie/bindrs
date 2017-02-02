@@ -1,5 +1,6 @@
 use regex::RegexSet;
 use shared::bound_file::{BoundFile, FileAction};
+use shared::helpers;
 use shared::watcher::BindrsWatcher;
 use slog::Logger;
 use std::io::{Read, Write, BufWriter, BufReader};
@@ -28,8 +29,8 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(log: &Logger,
     let child_2 =
         thread::spawn(move || { run_remote_listener(&log_clone, base_dir_clone, reader, lock); });
 
-    let _ = child_1.join().unwrap();
-    let _ = child_2.join().unwrap();
+    let _ = child_1.join();
+    let _ = child_2.join();
     info!(log, "BindRS Stopping");
 }
 
@@ -40,10 +41,20 @@ fn run_local_watcher<W: Write>(log: &Logger,
                                lock: Arc<Mutex<Vec<(String, i64, i32)>>>) {
     let mut writer = BufWriter::new(writer);
     let mut watcher = BindrsWatcher::new(&base_dir, &ingores);
-    watcher.watch();
-    let rx = watcher.rx.unwrap();
+    watcher.watch(log);
+    let rx = watcher.rx.unwrap_or_else(|| {
+        helpers::log_error_and_exit(log, "Couldn't get local receive channel off local watcher");
+        panic!();
+    });
+
     loop {
-        let (a, p) = rx.recv().unwrap();
+        let (a, p) = rx.recv().unwrap_or_else(|e| {
+            helpers::log_error_and_exit(log,
+                                        &format!("Failed to receive message from local watcher: \
+                                                 {}",
+                                                 e));
+            panic!(e)
+        });
         let full_str_path = format!("{}/{}", base_dir, p);
         let full_path = Path::new(&full_str_path);
 
@@ -54,7 +65,10 @@ fn run_local_watcher<W: Write>(log: &Logger,
         let p_clone = p.clone();
 
         {
-            let mut recent_files = lock.lock().unwrap();
+            let mut recent_files = lock.lock().unwrap_or_else(|_| {
+                helpers::log_error_and_exit(log, "Failed to aquire local fs lock, lock poisoned");
+                panic!()
+            });
             let (now_s, now_ns) = {
                 let now_spec = time::now().to_timespec();
                 (now_spec.sec, now_spec.nsec)
@@ -74,7 +88,10 @@ fn run_local_watcher<W: Write>(log: &Logger,
         }
 
         let bf = BoundFile::build_from_path_action(&base_dir, p, a);
-        let _guard = lock.lock().unwrap();
+        let _guard = lock.lock().unwrap_or_else(|_| {
+            helpers::log_error_and_exit(log, "Failed to aquire local fs lock, lock poisoned");
+            panic!()
+        });
         debug!(log, "Sending {} to remote", bf.path);
         bf.to_writer(&mut writer);
     }
@@ -87,7 +104,10 @@ fn run_remote_listener<R: Read>(log: &Logger,
     let mut reader = BufReader::new(reader);
     loop {
         let bf = BoundFile::from_reader(&mut reader);
-        let mut recent_files = lock.lock().unwrap();
+        let mut recent_files = lock.lock().unwrap_or_else(|_| {
+            helpers::log_error_and_exit(log, "Failed to aquire local fs lock, lock poisoned");
+            panic!()
+        });
         debug!(log, "Receiving {} from remote", bf.path);
         bf.save_to_disk(&base_dir);
 
