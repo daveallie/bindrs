@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Check for remote bindrs binary, was returning false-positive
 - Bad full path generation causing a crash
 
-## [0.0.2] - 2015-12-03
+## [0.0.2] - 2017-01-30
 ### Added
 - Check for remote folder before syncing starts
 - Pass through verbose flag to child process
