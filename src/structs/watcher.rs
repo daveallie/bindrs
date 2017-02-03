@@ -1,11 +1,11 @@
+use helpers;
 use notify::{DebouncedEvent, RecommendedWatcher, Watcher, RecursiveMode, watcher};
 use regex::RegexSet;
-use shared::bound_file::FileAction;
-use shared::helpers;
 use slog::Logger;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
+use structs::bound_file::FileAction;
 
 pub struct BindrsWatcher {
     pub rx: Option<Receiver<(FileAction, String)>>,

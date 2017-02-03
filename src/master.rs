@@ -1,11 +1,9 @@
-use master::remote_info::RemoteInfo;
-use shared::{helpers, executor};
+use helpers;
+use processors::{executor, rsync};
 use slog::Logger;
 use std::{time, thread, io};
 use std::process::{Stdio, ChildStdout, ChildStdin};
-
-pub mod remote_info;
-mod rsync;
+use structs::remote_info::RemoteInfo;
 
 pub fn run(log: &Logger,
            base_dir: &str,

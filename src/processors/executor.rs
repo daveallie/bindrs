@@ -1,13 +1,13 @@
+use helpers;
 use regex::RegexSet;
-use shared::bound_file::{BoundFile, FileAction};
-use shared::helpers;
-use shared::watcher::BindrsWatcher;
 use slog::Logger;
 use std::io::{Read, Write, BufWriter, BufReader};
 use std::marker::Send;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use structs::bound_file::{BoundFile, FileAction};
+use structs::watcher::BindrsWatcher;
 use time;
 
 pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(log: &Logger,

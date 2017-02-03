@@ -1,4 +1,5 @@
-use shared::{executor, helpers};
+use helpers;
+use processors::executor;
 use slog::Logger;
 use std::io::{self, BufReader, BufWriter};
 

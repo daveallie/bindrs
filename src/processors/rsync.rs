@@ -1,8 +1,8 @@
-use master::remote_info::RemoteInfo;
+use helpers;
 use regex::RegexSet;
-use shared::helpers;
 use slog::Logger;
 use std::process::Command;
+use structs::remote_info::RemoteInfo;
 
 pub fn run(log: &Logger, base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) {
     let args = rsync_args(log, base_dir, remote_info, ignores);

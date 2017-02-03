@@ -19,14 +19,16 @@ extern crate filetime;
 extern crate time;
 
 use clap::{App, ArgMatches};
-use shared::helpers;
+
 use slog::{Level, LevelFilter, Logger, Duplicate, DrainExt};
 use std::fs::{self, File};
 use std::path::Path;
 
 mod master;
 mod slave;
-mod shared;
+mod helpers;
+mod processors;
+mod structs;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
