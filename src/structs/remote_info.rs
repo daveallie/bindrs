@@ -11,6 +11,7 @@ pub struct RemoteInfo {
 
 impl RemoteInfo {
     pub fn build(remote_dir: &str, port: Option<&str>) -> RemoteInfo {
+        #[cfg_attr(feature="clippy", allow(result_unwrap_used))]
         let regex = Regex::new("([^@]+)@([^:]+):(.+)").unwrap(); // Unwrap is safe - hard coded string
         if let Some(captures) = regex.captures(remote_dir) {
             RemoteInfo {
@@ -70,5 +71,9 @@ impl RemoteInfo {
         } else {
             self.path.clone()
         }
+    }
+
+    pub fn full_path_trailing_slash(&self) -> String {
+        format!("{}/", self.full_path())
     }
 }

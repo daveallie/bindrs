@@ -17,6 +17,7 @@ bincode = "~0.6"
 byteorder = "~1.0"
 filetime = "~0.1"
 time = "~0.1"
+clippy = {version = "*", optional = true}
 
 [dependencies.clap]
 version = "~2.20"
@@ -26,3 +27,6 @@ features = ["yaml"]
 version = "~1.4"
 default-features = false
 features = ["release_max_level_debug", "max_level_trace"]
+
+[features]
+default = []

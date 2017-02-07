@@ -69,17 +69,18 @@ fn run_local_watcher<W: Write>(log: &Logger,
                 helpers::log_error_and_exit(log, "Failed to aquire local fs lock, lock poisoned");
                 panic!()
             });
-            let (now_s, now_ns) = {
+            let (now_s, now_nano_s) = {
                 let now_spec = time::now().to_timespec();
                 (now_spec.sec, now_spec.nsec)
             };
 
-            recent_files.retain(|&(_, ref time_s, ref time_ns)| if now_s - time_s > 1 {
+            recent_files.retain(|&(_, ref time_s, ref time_nano_s)| if now_s - time_s > 1 {
                 false
-            } else if now_s - time_s == 1 {
-                now_ns - time_ns + 1000000000 /* 1e9 */ < 500000000 // 5e8
+            } else if now_s - time_s ==
+                                                                              1 {
+                now_nano_s - time_nano_s + 1000000000 /* 1e9 */ < 500000000 // 5e8
             } else {
-                now_ns - time_ns < 500000000 // 5e8
+                now_nano_s - time_nano_s < 500000000 // 5e8
             });
 
             if recent_files.iter().map(|&(ref path, _, _)| path).any(|&ref path| &p_clone == path) {
@@ -111,10 +112,10 @@ fn run_remote_listener<R: Read>(log: &Logger,
         debug!(log, "Receiving {} from remote", bf.path);
         bf.save_to_disk(&base_dir);
 
-        let (now_s, now_ns) = {
+        let (now_s, now_nano_s) = {
             let now_spec = time::now().to_timespec();
             (now_spec.sec, now_spec.nsec)
         };
-        recent_files.push((bf.path, now_s, now_ns));
+        recent_files.push((bf.path, now_s, now_nano_s));
     }
 }

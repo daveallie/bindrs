@@ -7,6 +7,7 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use structs::bound_file::FileAction;
 
+#[cfg_attr(feature="clippy", allow(stutter))]
 pub struct BindrsWatcher {
     pub rx: Option<Receiver<(FileAction, String)>>,
     dir: String,
@@ -53,7 +54,7 @@ impl BindrsWatcher {
             let log_clone = log.clone();
             Some(thread::spawn(move || loop {
                 let event = notify_rx.recv().unwrap_or_else(|e| {
-                    helpers::log_error_and_exit(&log_clone, &format!("watch error: {:?}", e));
+                    helpers::log_error_and_exit(&log_clone, &format!("watch error: {}", e));
                     panic!(e);
                 });
                 match watch_loop_rx.try_recv() {
@@ -79,7 +80,7 @@ impl BindrsWatcher {
                         }
                         None => None,
                     })
-                    .filter(|&(_, ref short_path)| !ignores.is_match(&short_path));
+                    .filter(|&(_, ref short_path)| !ignores.is_match(short_path));
 
                 for (t, p) in filtered_actions {
                     let _ = final_tx.send((t, p.to_owned()));

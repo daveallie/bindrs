@@ -14,11 +14,11 @@ pub fn run(log: &Logger,
     let ignores = helpers::process_ignores(log, ignore_strings);
     let remote_info = RemoteInfo::build(remote_dir, port);
 
-    validate_remote_info(&log, &remote_info);
-    rsync::run(&log, &base_dir, &remote_info, &ignores);
+    validate_remote_info(log, &remote_info);
+    rsync::run(log, base_dir, &remote_info, &ignores);
     let (remote_reader, remote_writer) =
-        start_remote_slave(&log, &remote_info, &ignore_strings, verbose_mode);
-    executor::start(&log,
+        start_remote_slave(log, &remote_info, ignore_strings, verbose_mode);
+    executor::start(log,
                     base_dir.to_owned(),
                     ignores,
                     remote_reader,
@@ -27,7 +27,7 @@ pub fn run(log: &Logger,
 
 fn start_remote_slave(log: &Logger,
                       remote_info: &RemoteInfo,
-                      ignores: &Vec<String>,
+                      ignores: &[String],
                       verbose_mode: bool)
                       -> (ChildStdout, ChildStdin) {
     info!(log, "Starting remote slave");
@@ -38,22 +38,21 @@ fn start_remote_slave(log: &Logger,
         cmd += " -v"
     }
 
-    let mut child = match remote_info.generate_command(&mut remote_info.base_command(&cmd), &cmd)
+    if let Ok(mut child) = remote_info.generate_command(&mut remote_info.base_command(&cmd), &cmd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn() {
-        Ok(c) => c,
-        Err(_) => {
-            helpers::log_error_and_exit(log, "Failed to spawn a child");
-            panic!(); // For compilation
-        }
-    };
+        thread::sleep(time::Duration::new(1, 0));
+        #[cfg_attr(feature="clippy", allow(option_unwrap_used))]
+        let c_stdout = child.stdout.take().unwrap(); // Unwrap is safe - provided in child spawn
+        #[cfg_attr(feature="clippy", allow(option_unwrap_used))]
+        let c_stdin = child.stdin.take().unwrap(); // Unwrap is safe - provided in child spawn
 
-    thread::sleep(time::Duration::new(1, 0));
-    let c_stdout = child.stdout.take().unwrap(); // Unwrap is safe - provided in child spawn
-    let c_stdin = child.stdin.take().unwrap(); // Unwrap is safe - provided in child spawn
-
-    (c_stdout, c_stdin)
+        (c_stdout, c_stdin)
+    } else {
+        helpers::log_error_and_exit(log, "Failed to spawn a child");
+        panic!(); // For compilation
+    }
 }
 
 fn validate_remote_info(log: &Logger, remote_info: &RemoteInfo) {
@@ -88,10 +87,10 @@ fn check_cmd_output(log: &Logger,
     match get_cmd_output(remote_info, cmd) {
         Ok(output) => {
             if match_output ^ (output == wanted_output) {
-                helpers::log_error_and_exit(&log, bad_output_error);
+                helpers::log_error_and_exit(log, bad_output_error);
             }
         }
-        Err(_) => helpers::log_error_and_exit(&log, &format!("Failed to run '{}' on remote", cmd)),
+        Err(_) => helpers::log_error_and_exit(log, &format!("Failed to run '{}' on remote", cmd)),
     }
 }
 

@@ -1,6 +1,10 @@
+#![cfg_attr(feature="clippy", feature(plugin))]
+#![cfg_attr(feature="clippy", plugin(clippy))]
+#![cfg_attr(feature="clippy", deny(clippy_pedantic))]
+#![cfg_attr(feature="clippy", allow(missing_docs_in_private_items))]
+
 #![deny(missing_debug_implementations, missing_copy_implementations,
-    trivial_casts, trivial_numeric_casts,
-    unsafe_code, unstable_features,
+    trivial_casts, trivial_numeric_casts, unsafe_code,
     unused_import_braces, unused_qualifications)]
 
 #[macro_use]
@@ -38,15 +42,17 @@ fn main() {
         .version(VERSION)
         .get_matches();
 
-    if let Some(ref m) = m.subcommand_matches("master") {
-        run_master(m);
-    } else if let Some(ref m) = m.subcommand_matches("slave") {
-        run_slave(m);
+    if let Some(sub_m) = m.subcommand_matches("master") {
+        run_master(sub_m);
+    } else if let Some(sub_m) = m.subcommand_matches("slave") {
+        run_slave(sub_m);
     }
 }
 
 fn run_master(m: &ArgMatches) {
+    #[cfg_attr(feature="clippy", allow(option_unwrap_used))]
     let base_dir = get_base_dir(m.value_of("base_dir").unwrap()); // Unwrap is safe - required by clap
+    #[cfg_attr(feature="clippy", allow(option_unwrap_used))]
     let remote_dir = m.value_of("remote_dir").unwrap(); // Unwrap is safe - required by clap
     let remote_port = m.value_of("port");
     let verbose_mode = m.is_present("verbose");
@@ -64,6 +70,7 @@ fn run_master(m: &ArgMatches) {
 }
 
 fn run_slave(m: &ArgMatches) {
+    #[cfg_attr(feature="clippy", allow(option_unwrap_used))]
     let base_dir = get_base_dir(m.value_of("base_dir").unwrap()); // Unwrap is safe - required by clap
     let mut ignore_strings = get_ignore_strings(m);
     let verbose_mode = m.is_present("verbose");
@@ -82,13 +89,10 @@ fn get_ignore_strings(m: &ArgMatches) -> Vec<String> {
 }
 
 fn get_base_dir(base_dir: &str) -> String {
-    match helpers::resolve_path(base_dir) {
-        Some(dir) => dir,
-        None => {
-            helpers::print_error_and_exit("failed to find base directory");
-            "".to_owned()
-        }
-    }
+    helpers::resolve_path(base_dir).unwrap_or_else(|| {
+        helpers::print_error_and_exit("failed to find base directory");
+        "".to_owned()
+    })
 }
 
 fn setup_log(base_dir: &str, verbose_mode: bool, master_mode: bool) -> Logger {
@@ -103,28 +107,27 @@ fn setup_log(base_dir: &str, verbose_mode: bool, master_mode: bool) -> Logger {
     path_buf.push("bindrs");
     path_buf.set_extension("log");
 
-    let file = match File::create(path_buf.as_path()) {
-        Ok(f) => f,
-        Err(_) => {
-            helpers::print_error_and_exit("Failed to create log file.");
-            panic!(); // For compilation
+    if let Ok(file) = File::create(path_buf.as_path()) {
+        let stream = slog_stream::stream(file, slog_bunyan::new().build());
+
+        let level = if verbose_mode {
+            Level::Debug
+        } else {
+            Level::Info
+        };
+
+        if master_mode {
+            let termlog = slog_term::streamer().async().full().build();
+            Logger::root(Duplicate::new(LevelFilter::new(stream, level),
+                                        LevelFilter::new(termlog, level))
+                             .fuse(),
+                         o!("version" => VERSION, "mode" => "master"))
+        } else {
+            Logger::root(LevelFilter::new(stream, level).fuse(),
+                         o!("version" => VERSION, "mode" => "slave"))
         }
-    };
-    let stream = slog_stream::stream(file, slog_bunyan::new().build());
-
-    let level = match verbose_mode {
-        true => Level::Debug,
-        false => Level::Info,
-    };
-
-    if master_mode {
-        let termlog = slog_term::streamer().async().full().build();
-        Logger::root(Duplicate::new(LevelFilter::new(stream, level),
-                                    LevelFilter::new(termlog, level))
-                         .fuse(),
-                     o!("version" => VERSION, "mode" => "master"))
     } else {
-        Logger::root(LevelFilter::new(stream, level).fuse(),
-                     o!("version" => VERSION, "mode" => "slave"))
+        helpers::print_error_and_exit("Failed to create log file.");
+        panic!(); // For compilation
     }
 }

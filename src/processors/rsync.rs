@@ -37,7 +37,7 @@ fn rsync_args(log: &Logger,
 
     args.push("--delete".to_owned());
     args.push(format!("{}/", base_dir));
-    args.push(remote_info.full_path() + "/");
+    args.push(remote_info.full_path_trailing_slash());
     args
 }
 
@@ -73,9 +73,10 @@ fn find_rsync_ignore_folders(log: &Logger,
     folders.into_iter().filter(|f| ignores.is_match(f)).collect()
 }
 
+#[cfg_attr(feature="clippy", allow(filter_map))]
 fn process_raw_file_list(base_dir: &str, output: &str) -> Vec<String> {
     let base_length = base_dir.len() + 1;
-    output.split("\n")
+    output.split('\n')
         .skip(1)
         .filter(|s| !s.is_empty())
         .map(|s| s.chars().skip(base_length).collect())

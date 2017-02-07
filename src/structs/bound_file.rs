@@ -95,23 +95,18 @@ impl BoundFile {
             let file_time = FileTime::from_seconds_since_1970(self.mtime, 0);
             filetime::set_file_times(full_path, file_time, file_time)
                 .expect(&format!("Failed to set file time at: {}", full_str_path));
-        } else {
+        } else if file_exists {
             // Delete
-            if file_exists {
-                fs::remove_file(&full_path)
-                    .expect(&format!("Failed to delete file at: {}", full_str_path));
-            }
+            fs::remove_file(&full_path)
+                .expect(&format!("Failed to delete file at: {}", full_str_path));
         }
     }
 
     fn encode(&self) -> Vec<u8> {
-        let encoded: Vec<u8> = encode(&self, SizeLimit::Infinite)
-            .expect("Failed to encode BoundFile");
-        encoded
+        encode(&self, SizeLimit::Infinite).expect("Failed to encode BoundFile")
     }
 
     fn decode(bytes: &[u8]) -> BoundFile {
-        let decoded: BoundFile = decode(bytes).expect("Failed to decode BoundFile");
-        decoded
+        decode(bytes).expect("Failed to decode BoundFile")
     }
 }
