@@ -1,10 +1,23 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-$script = <<SCRIPT
-#!/bin/bash
-curl https://sh.rustup.rs -sSf | sudo -u vagrant HOME=/home/vagrant sh -s -- --default-toolchain stable -y 2>&1
+Vagrant.configure(2) do |config|
+  config.vm.box = "bento/ubuntu-16.04"
+  config.vm.provision :shell, inline: setup_rust
+  config.vm.provision :shell, inline: set_prompt("BINDRS-BOX")
+  config.vm.provision :shell, inline: setup_bindrs_dir
+  config.vm.synced_folder "..", "/bindrs"
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+  end
+end
 
+def setup_rust
+  'curl https://sh.rustup.rs -sSf | sudo -u vagrant HOME=/home/vagrant sh -s -- --default-toolchain stable -y 2>&1'
+end
+
+def setup_bindrs_dir
+  <<-SCRIPT
 su vagrant <<EOF
 mkdir -p /home/vagrant/bindrs
 ln -s /bindrs/src /home/vagrant/bindrs
@@ -14,12 +27,8 @@ ln -s /bindrs/development /home/vagrant/bindrs
 ln -s /bindrs/pkg /home/vagrant/bindrs
 EOF
 SCRIPT
+end
 
-Vagrant.configure(2) do |config|
-  config.vm.box = "bento/ubuntu-16.04"
-  config.vm.provision :shell, inline: $script
-  config.vm.synced_folder "..", "/bindrs"
-  config.vm.provider "virtualbox" do |vb|
-    vb.memory = "1024"
-  end
+def set_prompt(box_name)
+  %Q(echo "PS1='\\[\\033[0;32m\\]#{box_name}"'$(q=$?; [[ $q -gt 0 ]] && echo " \\[\\033[0;31m\\]$q")'" \\[\\033[0;37m\\]\\w\\[\\033[0m\\]$ '" >> /home/vagrant/.bashrc)
 end
