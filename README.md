@@ -1,5 +1,7 @@
 # BindRS :file_folder::link::file_folder:
 
+[![Build Status](https://travis-ci.org/daveallie/bindrs.svg?branch=master)](https://travis-ci.org/daveallie/bindrs)
+
 > Two way file syncer using platform native notify in Rust
 
 Rebuilding https://github.com/daveallie/entangler in Rust.
