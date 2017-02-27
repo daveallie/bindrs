@@ -36,6 +36,7 @@ fn rsync_args(log: &Logger,
     }
 
     args.push("--delete".to_owned());
+    args.push("--ignore-errors".to_owned());
     args.push(format!("{}/", base_dir));
     args.push(remote_info.full_path_trailing_slash());
     args
