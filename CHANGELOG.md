@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Rearranged project structure
+
+### Fixed
+- Skip attempting to send new/changed files to remote if they no longer exist
+- Aquire lock earlier when local changes are made
+- Force rsync changes, ignore IO errors using `--ignore-errors`
 
 ## [0.0.3] - 2017-02-02
 ### Changed
