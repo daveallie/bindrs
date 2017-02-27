@@ -26,8 +26,11 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(log: &Logger,
 
     let base_dir_clone = base_dir.clone();
     let log_clone = log.clone();
-    let child_2 =
-        thread::spawn(move || { run_remote_listener(&log_clone, base_dir_clone, reader, lock); });
+    let child_2 = thread::spawn(move || {
+        run_remote_listener(&log_clone, base_dir_clone, reader, lock);
+    });
+
+    info!(log, "Ready!");
 
     let _ = child_1.join();
     let _ = child_2.join();
@@ -74,13 +77,14 @@ fn run_local_watcher<W: Write>(log: &Logger,
                 (now_spec.sec, now_spec.nsec)
             };
 
-            recent_files.retain(|&(_, ref time_s, ref time_nano_s)| if now_s - time_s > 1 {
-                false
-            } else if now_s - time_s ==
-                                                                              1 {
-                now_nano_s - time_nano_s + 1000000000 /* 1e9 */ < 500000000 // 5e8
-            } else {
-                now_nano_s - time_nano_s < 500000000 // 5e8
+            recent_files.retain(|&(_, ref time_s, ref time_nano_s)| {
+                if now_s - time_s > 1 {
+                    false
+                } else if now_s - time_s == 1 {
+                    now_nano_s - time_nano_s + 1000000000 /* 1e9 */ < 500000000 // 5e8
+                } else {
+                    now_nano_s - time_nano_s < 500000000 // 5e8
+                }
             });
 
             if recent_files.iter().map(|&(ref path, _, _)| path).any(|&ref path| &p_clone == path) {
@@ -88,13 +92,19 @@ fn run_local_watcher<W: Write>(log: &Logger,
             }
         }
 
-        let bf = BoundFile::build_from_path_action(&base_dir, p, a);
         let _guard = lock.lock().unwrap_or_else(|_| {
             helpers::log_error_and_exit(log, "Failed to aquire local fs lock, lock poisoned");
             panic!()
         });
-        debug!(log, "Sending {} to remote", bf.path);
-        bf.to_writer(&mut writer);
+        let full_path_str = format!("{}/{}", &base_dir, p);
+        let full_path = Path::new(&full_path_str);
+        if a == FileAction::CreateUpdate && !full_path.exists() {
+            debug!(log, "Skipping sending {} as file does not exist", p);
+        } else {
+            let bf = BoundFile::build_from_path_action(&base_dir, p, a);
+            debug!(log, "Sending {} to remote", bf.path);
+            bf.to_writer(&mut writer);
+        }
     }
 }
 
