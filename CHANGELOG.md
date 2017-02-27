@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [0.0.4] - 2017-02-27
 ### Changed
 - Rearranged project structure
 
@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Wait between last error log and exit, allows log to flush
 - Allow release builds to log debug lines (needed for verbose mode)
 
-[Unreleased]: https://github.com/daveallie/bindrs/compare/v0.0.3...HEAD
+[Unreleased]: https://github.com/daveallie/bindrs/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/daveallie/bindrs/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/daveallie/bindrs/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/daveallie/bindrs/compare/v0.0.1...v0.0.2
