@@ -58,10 +58,7 @@ fn run_local_watcher<W: Write>(
         let (a, p) = rx.recv().unwrap_or_else(|e| {
             helpers::log_error_and_exit(
                 log,
-                &format!(
-                    "Failed to receive message from local watcher: {}",
-                    e
-                ),
+                &format!("Failed to receive message from local watcher: {}", e),
             );
             panic!(e)
         });
