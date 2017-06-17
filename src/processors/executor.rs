@@ -10,11 +10,13 @@ use structs::bound_file::{BoundFile, FileAction};
 use structs::watcher::BindrsWatcher;
 use time;
 
-pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(log: &Logger,
-                                                                  base_dir: String,
-                                                                  ignores: RegexSet,
-                                                                  reader: R,
-                                                                  writer: W) {
+pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
+    log: &Logger,
+    base_dir: String,
+    ignores: RegexSet,
+    reader: R,
+    writer: W,
+) {
     let lock: Arc<Mutex<Vec<(String, i64, i32)>>> = Arc::new(Mutex::new(vec![]));
     let lock_clone = lock.clone();
 
@@ -37,11 +39,13 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(log: &Logger,
     info!(log, "BindRS Stopping");
 }
 
-fn run_local_watcher<W: Write>(log: &Logger,
-                               base_dir: String,
-                               ingores: RegexSet,
-                               writer: W,
-                               lock: Arc<Mutex<Vec<(String, i64, i32)>>>) {
+fn run_local_watcher<W: Write>(
+    log: &Logger,
+    base_dir: String,
+    ingores: RegexSet,
+    writer: W,
+    lock: Arc<Mutex<Vec<(String, i64, i32)>>>,
+) {
     let mut writer = BufWriter::new(writer);
     let mut watcher = BindrsWatcher::new(&base_dir, &ingores);
     watcher.watch(log);
@@ -52,10 +56,13 @@ fn run_local_watcher<W: Write>(log: &Logger,
 
     loop {
         let (a, p) = rx.recv().unwrap_or_else(|e| {
-            helpers::log_error_and_exit(log,
-                                        &format!("Failed to receive message from local watcher: \
-                                                 {}",
-                                                 e));
+            helpers::log_error_and_exit(
+                log,
+                &format!(
+                    "Failed to receive message from local watcher: {}",
+                    e
+                ),
+            );
             panic!(e)
         });
         let full_str_path = format!("{}/{}", base_dir, p);
@@ -87,7 +94,10 @@ fn run_local_watcher<W: Write>(log: &Logger,
                 }
             });
 
-            if recent_files.iter().map(|&(ref path, _, _)| path).any(|&ref path| &p_clone == path) {
+            if recent_files.iter().map(|&(ref path, _, _)| path).any(
+                |&ref path| &p_clone == path,
+            )
+            {
                 continue;
             }
         }
@@ -108,10 +118,12 @@ fn run_local_watcher<W: Write>(log: &Logger,
     }
 }
 
-fn run_remote_listener<R: Read>(log: &Logger,
-                                base_dir: String,
-                                reader: R,
-                                lock: Arc<Mutex<Vec<(String, i64, i32)>>>) {
+fn run_remote_listener<R: Read>(
+    log: &Logger,
+    base_dir: String,
+    reader: R,
+    lock: Arc<Mutex<Vec<(String, i64, i32)>>>,
+) {
     let mut reader = BufReader::new(reader);
     loop {
         let bf = BoundFile::from_reader(&mut reader);

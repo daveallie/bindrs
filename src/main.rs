@@ -10,23 +10,24 @@
 #[macro_use]
 extern crate slog;
 extern crate slog_bunyan;
-extern crate slog_stream;
 extern crate slog_term;
 #[macro_use]
 extern crate clap;
 extern crate regex;
 extern crate notify;
+#[macro_use]
+extern crate serde_derive;
 extern crate bincode;
-extern crate rustc_serialize;
 extern crate byteorder;
 extern crate filetime;
 extern crate time;
+extern crate tempfile;
 
 use clap::{App, ArgMatches};
-
-use slog::{Level, LevelFilter, Logger, Duplicate, DrainExt};
-use std::fs::{self, File};
+use slog::Drain;
+use std::fs::{self, OpenOptions};
 use std::path::Path;
+use std::sync::Mutex;
 
 mod master;
 mod slave;
@@ -38,9 +39,7 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 fn main() {
     let yaml = load_yaml!("cli.yml");
-    let m = App::from_yaml(yaml)
-        .version(VERSION)
-        .get_matches();
+    let m = App::from_yaml(yaml).version(VERSION).get_matches();
 
     if let Some(sub_m) = m.subcommand_matches("master") {
         run_master(sub_m);
@@ -51,7 +50,8 @@ fn main() {
 
 fn run_master(m: &ArgMatches) {
     #[cfg_attr(feature="clippy", allow(option_unwrap_used))]
-    let base_dir = get_base_dir(m.value_of("base_dir").unwrap()); // Unwrap is safe - required by clap
+    // Unwrap is safe - required by clap
+    let base_dir = get_base_dir(m.value_of("base_dir").unwrap());
     #[cfg_attr(feature="clippy", allow(option_unwrap_used))]
     let remote_dir = m.value_of("remote_dir").unwrap(); // Unwrap is safe - required by clap
     let remote_port = m.value_of("port");
@@ -61,17 +61,20 @@ fn run_master(m: &ArgMatches) {
     let log = setup_log(&base_dir, verbose_mode, true);
     info!(log, "Starting BindRS");
 
-    master::run(&log,
-                &base_dir,
-                remote_dir,
-                remote_port,
-                &mut ignore_strings,
-                verbose_mode)
+    master::run(
+        &log,
+        &base_dir,
+        remote_dir,
+        remote_port,
+        &mut ignore_strings,
+        verbose_mode,
+    )
 }
 
 fn run_slave(m: &ArgMatches) {
     #[cfg_attr(feature="clippy", allow(option_unwrap_used))]
-    let base_dir = get_base_dir(m.value_of("base_dir").unwrap()); // Unwrap is safe - required by clap
+    // Unwrap is safe - required by clap
+    let base_dir = get_base_dir(m.value_of("base_dir").unwrap());
     let mut ignore_strings = get_ignore_strings(m);
     let verbose_mode = m.is_present("verbose");
 
@@ -95,7 +98,7 @@ fn get_base_dir(base_dir: &str) -> String {
     })
 }
 
-fn setup_log(base_dir: &str, verbose_mode: bool, master_mode: bool) -> Logger {
+fn setup_log(base_dir: &str, verbose_mode: bool, master_mode: bool) -> slog::Logger {
     let mut path_buf = Path::new(base_dir).to_path_buf();
     path_buf.push(".bindrs");
 
@@ -107,24 +110,36 @@ fn setup_log(base_dir: &str, verbose_mode: bool, master_mode: bool) -> Logger {
     path_buf.push("bindrs");
     path_buf.set_extension("log");
 
-    if let Ok(file) = File::create(path_buf.as_path()) {
-        let stream = slog_stream::stream(file, slog_bunyan::new().build());
+    let wrapped_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(path_buf.as_path());
 
+    if let Ok(file) = wrapped_file {
         let level = if verbose_mode {
-            Level::Debug
+            slog::Level::Debug
         } else {
-            Level::Info
+            slog::Level::Info
         };
 
+        let file_decorator = slog_term::PlainSyncDecorator::new(file);
+        let file_drain = slog_term::FullFormat::new(file_decorator).build();
+        let file_drain = slog::LevelFilter::new(file_drain, level);
+
         if master_mode {
-            let termlog = slog_term::streamer().async().full().build();
-            Logger::root(Duplicate::new(LevelFilter::new(stream, level),
-                                        LevelFilter::new(termlog, level))
-                             .fuse(),
-                         o!("version" => VERSION, "mode" => "master"))
+            let term_decorator = slog_term::TermDecorator::new().build();
+            let term_drain = Mutex::new(slog_term::CompactFormat::new(term_decorator).build())
+                .fuse();
+            let term_drain = slog::LevelFilter::new(term_drain, level);
+            let drain = slog::Duplicate::new(file_drain, term_drain);
+
+            slog::Logger::root(drain.fuse(), o!("version" => VERSION, "mode" => "master"))
         } else {
-            Logger::root(LevelFilter::new(stream, level).fuse(),
-                         o!("version" => VERSION, "mode" => "slave"))
+            slog::Logger::root(
+                file_drain.fuse(),
+                o!("version" => VERSION, "mode" => "slave"),
+            )
         }
     } else {
         helpers::print_error_and_exit("Failed to create log file.");

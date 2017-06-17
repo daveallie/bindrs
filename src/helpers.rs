@@ -16,14 +16,14 @@ pub fn resolve_path(dir: &str) -> Option<String> {
     }
 }
 
-#[cfg_attr(feature="clippy", allow(print_stdout))]
+#[cfg_attr(feature = "clippy", allow(print_stdout))]
 pub fn print_error_and_exit(msg: &str) {
     println!("{}", msg);
     exit(1);
 }
 
 pub fn log_error_and_exit(log: &Logger, msg: &str) {
-    error!(log, msg);
+    error!(log, "{}", msg);
     thread::sleep(time::Duration::from_millis(500));
     exit(1);
 }
@@ -115,7 +115,9 @@ mod tests {
     fn resolve_path_canonicalize_correctly() {
         let mut path = current_dir().unwrap();
         path.push("src");
-        assert_eq!(canonicalize(path.as_path()).unwrap().to_str().unwrap(),
-                   resolve_path("./src/processors/../../src").unwrap());
+        assert_eq!(
+            canonicalize(path.as_path()).unwrap().to_str().unwrap(),
+            resolve_path("./src/processors/../../src").unwrap()
+        );
     }
 }

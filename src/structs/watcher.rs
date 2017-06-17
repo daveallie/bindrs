@@ -7,7 +7,7 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use structs::bound_file::FileAction;
 
-#[cfg_attr(feature="clippy", allow(stutter))]
+#[cfg_attr(feature = "clippy", allow(stutter))]
 pub struct BindrsWatcher {
     pub rx: Option<Receiver<(FileAction, String)>>,
     dir: String,
@@ -41,9 +41,11 @@ impl BindrsWatcher {
                 panic!(e);
             }
         };
-        watcher.watch(&self.dir, RecursiveMode::Recursive).unwrap_or_else(|e| {
-            helpers::log_error_and_exit(log, &format!("Failed to watch {}: {}", self.dir, e))
-        });
+        watcher
+            .watch(&self.dir, RecursiveMode::Recursive)
+            .unwrap_or_else(|e| {
+                helpers::log_error_and_exit(log, &format!("Failed to watch {}: {}", self.dir, e))
+            });
         self.watcher = Some(watcher);
         self.watch_loop_tx = Some(watch_loop_tx);
         self.rx = Some(final_rx);
@@ -72,15 +74,17 @@ impl BindrsWatcher {
                     _ => vec![],
                 };
 
-                let filtered_actions = actions.into_iter()
-                    .filter_map(|(t, p)| match p.to_str() {
-                        Some(path) => {
-                            let short_path: String = path.chars().skip(dir_length).collect();
-                            Some((t, short_path))
-                        }
-                        None => None,
-                    })
-                    .filter(|&(_, ref short_path)| !ignores.is_match(short_path));
+                let filtered_actions =
+                    actions
+                        .into_iter()
+                        .filter_map(|(t, p)| match p.to_str() {
+                            Some(path) => {
+                                let short_path: String = path.chars().skip(dir_length).collect();
+                                Some((t, short_path))
+                            }
+                            None => None,
+                        })
+                        .filter(|&(_, ref short_path)| !ignores.is_match(short_path));
 
                 for (t, p) in filtered_actions {
                     let _ = final_tx.send((t, p.to_owned()));

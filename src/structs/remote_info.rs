@@ -12,13 +12,15 @@ pub struct RemoteInfo {
 impl RemoteInfo {
     pub fn build(remote_dir: &str, port: Option<&str>) -> RemoteInfo {
         #[cfg_attr(feature="clippy", allow(result_unwrap_used))]
-        let regex = Regex::new("([^@]+)@([^:]+):(.+)").unwrap(); // Unwrap is safe - hard coded string
+        // Unwrap is safe - hard coded string
+        let regex = Regex::new("([^@]+)@([^:]+):(.+)").unwrap();
         if let Some(captures) = regex.captures(remote_dir) {
             RemoteInfo {
                 is_remote: true,
-                path: captures.get(3).unwrap().as_str().to_owned(), // Unwrap is safe - capture group exists in regex
-                user: captures.get(1).unwrap().as_str().to_owned(), // Unwrap is safe - capture group exists in regex
-                host: captures.get(2).unwrap().as_str().to_owned(), // Unwrap is safe - capture group exists in regex
+                // Unwrap is safe - capture group exists in regex
+                path: captures.get(3).unwrap().as_str().to_owned(),
+                user: captures.get(1).unwrap().as_str().to_owned(),
+                host: captures.get(2).unwrap().as_str().to_owned(),
                 port: match port {
                     Some(p) => p.to_owned(),
                     None => "22".to_owned(),
@@ -48,7 +50,8 @@ impl RemoteInfo {
 
     pub fn generate_command<'a>(&self, command: &'a mut Command, cmd: &str) -> &'a mut Command {
         if self.is_remote {
-            command.arg("-q")
+            command
+                .arg("-q")
                 .arg(format!("{}@{}", self.user, self.host))
                 .arg("-p")
                 .arg(&self.port)
