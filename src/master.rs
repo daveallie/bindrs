@@ -20,13 +20,7 @@ pub fn run(
     rsync::run(log, base_dir, &remote_info, &ignores);
     let (remote_reader, remote_writer) =
         start_remote_slave(log, &remote_info, ignore_strings, verbose_mode);
-    executor::start(
-        log,
-        base_dir.to_owned(),
-        ignores,
-        remote_reader,
-        remote_writer,
-    );
+    executor::start(log, base_dir, ignores, remote_reader, remote_writer);
 }
 
 fn start_remote_slave(
@@ -115,7 +109,7 @@ fn check_cmd_output(
 fn get_cmd_output(remote_info: &RemoteInfo, cmd: &str) -> Result<String, io::Error> {
     let output = try!(
         remote_info
-            .generate_command(&mut remote_info.base_command(&cmd), &cmd)
+            .generate_command(&mut remote_info.base_command(cmd), cmd)
             .output()
     );
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())

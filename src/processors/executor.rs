@@ -12,7 +12,7 @@ use time;
 
 pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
     log: &Logger,
-    base_dir: String,
+    base_dir: &str,
     ignores: RegexSet,
     reader: R,
     writer: W,
@@ -20,16 +20,16 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
     let lock: Arc<Mutex<Vec<(String, i64, i32)>>> = Arc::new(Mutex::new(vec![]));
     let lock_clone = lock.clone();
 
-    let base_dir_clone = base_dir.clone();
+    let base_dir_clone = base_dir.to_owned();
     let log_clone = log.clone();
     let child_1 = thread::spawn(move || {
-        run_local_watcher(&log_clone, base_dir_clone, ignores, writer, lock_clone);
+        run_local_watcher(&log_clone, &base_dir_clone, &ignores, writer, lock_clone);
     });
 
-    let base_dir_clone = base_dir.clone();
+    let base_dir_clone = base_dir.to_owned();
     let log_clone = log.clone();
     let child_2 = thread::spawn(move || {
-        run_remote_listener(&log_clone, base_dir_clone, reader, lock);
+        run_remote_listener(&log_clone, &base_dir_clone, reader, lock);
     });
 
     info!(log, "Ready!");
@@ -41,13 +41,13 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
 
 fn run_local_watcher<W: Write>(
     log: &Logger,
-    base_dir: String,
-    ingores: RegexSet,
+    base_dir: &str,
+    ingores: &RegexSet,
     writer: W,
     lock: Arc<Mutex<Vec<(String, i64, i32)>>>,
 ) {
     let mut writer = BufWriter::new(writer);
-    let mut watcher = BindrsWatcher::new(&base_dir, &ingores);
+    let mut watcher = BindrsWatcher::new(base_dir, ingores);
     watcher.watch(log);
     let rx = watcher.rx.unwrap_or_else(|| {
         helpers::log_error_and_exit(log, "Couldn't get local receive channel off local watcher");
@@ -103,12 +103,11 @@ fn run_local_watcher<W: Write>(
             helpers::log_error_and_exit(log, "Failed to aquire local fs lock, lock poisoned");
             panic!()
         });
-        let full_path_str = format!("{}/{}", &base_dir, p);
-        let full_path = Path::new(&full_path_str);
+
         if a == FileAction::CreateUpdate && !full_path.exists() {
             debug!(log, "Skipping sending {} as file does not exist", p);
         } else {
-            let bf = BoundFile::build_from_path_action(&base_dir, p, a);
+            let bf = BoundFile::build_from_path_action(base_dir, p, a);
             debug!(log, "Sending {} to remote", bf.path);
             bf.to_writer(&mut writer);
         }
@@ -117,7 +116,7 @@ fn run_local_watcher<W: Write>(
 
 fn run_remote_listener<R: Read>(
     log: &Logger,
-    base_dir: String,
+    base_dir: &str,
     reader: R,
     lock: Arc<Mutex<Vec<(String, i64, i32)>>>,
 ) {
@@ -129,7 +128,7 @@ fn run_remote_listener<R: Read>(
             panic!()
         });
         debug!(log, "Receiving {} from remote", bf.path);
-        bf.save_to_disk(&base_dir);
+        bf.save_to_disk(base_dir);
 
         let (now_s, now_nano_s) = {
             let now_spec = time::now().to_timespec();

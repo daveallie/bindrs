@@ -8,11 +8,5 @@ pub fn run(log: &Logger, base_dir: &str, ignore_strings: &mut Vec<String>) {
 
     let (remote_reader, remote_writer) =
         (BufReader::new(io::stdin()), BufWriter::new(io::stdout()));
-    executor::start(
-        log,
-        base_dir.to_owned(),
-        ignores,
-        remote_reader,
-        remote_writer,
-    );
+    executor::start(log, base_dir, ignores, remote_reader, remote_writer);
 }

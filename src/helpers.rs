@@ -47,7 +47,7 @@ fn vec_to_regex_set(log: &Logger, ignores: &[String]) -> RegexSet {
     }
 }
 
-fn convert_to_project_regex_strings<'a>(ignores: &'a [String]) -> Vec<String> {
+fn convert_to_project_regex_strings(ignores: &[String]) -> Vec<String> {
     let mut regexes: Vec<String> = vec![];
 
     for i in ignores.iter() {
