@@ -64,7 +64,7 @@ fn validate_remote_info(log: &Logger, remote_info: &RemoteInfo) {
         log,
         remote_info,
         "which bindrs",
-        "bindrs not found",
+        &["bindrs not found".to_owned(), "".to_owned()],
         false,
         "Please install BindRS on the remote machine and add it to the path",
     );
@@ -73,7 +73,7 @@ fn validate_remote_info(log: &Logger, remote_info: &RemoteInfo) {
         log,
         remote_info,
         "bindrs -V",
-        &format!("BindRS {}", ::VERSION),
+        &[format!("BindRS {}", ::VERSION)],
         true,
         "Please make sure your local and remote versions of BindRS match",
     );
@@ -82,7 +82,7 @@ fn validate_remote_info(log: &Logger, remote_info: &RemoteInfo) {
         log,
         remote_info,
         &format!("test -d {} || echo 'bad'", remote_info.path),
-        "bad",
+        &["bad".to_owned()],
         false,
         "Remote directory does not exist, please create it",
     );
@@ -92,17 +92,19 @@ fn check_cmd_output(
     log: &Logger,
     remote_info: &RemoteInfo,
     cmd: &str,
-    wanted_output: &str,
+    wanted_output: &[String],
     match_output: bool,
     bad_output_error: &str,
 ) {
     match get_cmd_output(remote_info, cmd) {
         Ok(output) => {
-            if match_output ^ (output == wanted_output) {
+            if match_output ^ wanted_output.contains(&output) {
                 helpers::log_error_and_exit(log, bad_output_error);
             }
         }
-        Err(_) => helpers::log_error_and_exit(log, &format!("Failed to run '{}' on remote", cmd)),
+        Err(e) => {
+            helpers::log_error_and_exit(log, &format!("Failed to run '{}' on remote: {}", cmd, e))
+        }
     }
 }
 

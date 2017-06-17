@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking Changes
 - Command to start master process changed from `bindrs master` to `bindrs run`
 
+### Fixed
+- Show correct error when bindrs is not installed on remote machine
+
 ## [0.0.4] - 2017-02-27
 ### Changed
 - Rearranged project structure
