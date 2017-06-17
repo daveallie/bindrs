@@ -5,11 +5,11 @@ matrix:
   - rust: stable
   - rust: beta
   - rust: nightly
-    env: FEATURES=clippy
+    env: BUILD_FEATURES=clippy
 before_script:
   - export PATH="$PATH:$HOME/.cargo/bin"
   - which rustfmt || cargo install rustfmt
 script:
   - cargo fmt -- --write-mode=diff
-  - cargo build --verbose --features "${FEATURES}"
-  - cargo test --verbose --features "${FEATURES}"
+  - cargo build --verbose --features "${BUILD_FEATURES}"
+  - cargo test --verbose
