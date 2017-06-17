@@ -1,11 +1,21 @@
 use helpers;
 use regex::RegexSet;
 use slog::Logger;
+use std::fs::OpenOptions;
+use std::io::prelude::*;
+use std::path::Path;
 use std::process::Command;
 use structs::remote_info::RemoteInfo;
+use tempdir::TempDir;
 
 pub fn run(log: &Logger, base_dir: &str, remote_info: &RemoteInfo, ignores: &RegexSet) {
-    let args = rsync_args(log, base_dir, remote_info, ignores);
+    let temp_dir = create_temp_dir(log, "rsync-data");
+    let ignore_file_pathbuf = temp_dir.path().join("rsync-ignores");
+    let ignore_file_path = ignore_file_pathbuf.as_path();
+    let ignore_file_string_path = ignore_file_path.to_string_lossy().into_owned();
+
+    build_rsync_ignore_file(log, ignore_file_path, base_dir, remote_info, ignores);
+    let args = rsync_args(base_dir, remote_info, &ignore_file_string_path);
 
     info!(log, "Running initial rsync");
     match Command::new("rsync").args(&args).output() {
@@ -17,18 +27,44 @@ pub fn run(log: &Logger, base_dir: &str, remote_info: &RemoteInfo, ignores: &Reg
     }
 }
 
-fn rsync_args(
+fn build_rsync_ignore_file(
     log: &Logger,
+    ignore_file_path: &Path,
     base_dir: &str,
     remote_info: &RemoteInfo,
     ignores: &RegexSet,
-) -> Vec<String> {
-    let mut args: Vec<String> = vec!["-azv".to_owned()];
+) -> String {
+    let mut ignore_file = match OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(ignore_file_path) {
+        Ok(f) => f,
+        Err(e) => {
+            helpers::log_error_and_exit(log, &format!("Could not create temp file: {}", e));
+            panic!(e);
+        }
+    };
+
+
 
     for path in find_rsync_ignore_folders(log, base_dir, remote_info, ignores) {
-        args.push("--exclude".to_owned());
-        args.push(path);
+        if let Err(e) = writeln!(ignore_file, "{}", path) {
+            helpers::log_error_and_exit(
+                log,
+                &format!("Could not append rsync ignore to temp file: {}", e),
+            )
+        }
     }
+
+    "".to_owned()
+}
+
+fn rsync_args(base_dir: &str, remote_info: &RemoteInfo, ignore_file_path: &str) -> Vec<String> {
+    let mut args: Vec<String> = vec!["-azv".to_owned()];
+
+    args.push("--exclude-from".to_owned());
+    args.push(ignore_file_path.to_owned());
 
     if remote_info.is_remote {
         args.push(format!(" -e \"ssh -p {}\"", remote_info.port));
@@ -78,6 +114,16 @@ fn find_rsync_ignore_folders(
         .into_iter()
         .filter(|f| ignores.is_match(f))
         .collect()
+}
+
+fn create_temp_dir(log: &Logger, name: &str) -> TempDir {
+    match TempDir::new(name) {
+        Ok(td) => td,
+        Err(e) => {
+            helpers::log_error_and_exit(log, &format!("Could not create temp directory: {}", e));
+            panic!(e);
+        }
+    }
 }
 
 #[cfg_attr(feature = "clippy", allow(filter_map))]

@@ -21,7 +21,7 @@ extern crate bincode;
 extern crate byteorder;
 extern crate filetime;
 extern crate time;
-extern crate tempfile;
+extern crate tempdir;
 
 use clap::{App, ArgMatches};
 use slog::Drain;
