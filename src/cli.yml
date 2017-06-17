@@ -6,10 +6,10 @@ settings:
     - ColoredHelp
     - GlobalVersion
 subcommands:
-    - master:
+    - run:
         settings:
             - ColoredHelp
-        about: Runs BindRS in master mode - launches a slave
+        about: Runs BindRS to keep two directories in sync
         args:
             - base_dir:
                 help: Local folder path
@@ -41,7 +41,7 @@ subcommands:
                 short: v
                 long: verbose
     - slave:
-        about: Runs BindRS in slave mode - launched from a master
+        about: Runs BindRS in slave mode - launched from a master process
         args:
             - base_dir:
                 help: Local folder path

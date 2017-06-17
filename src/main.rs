@@ -41,7 +41,7 @@ fn main() {
     let yaml = load_yaml!("cli.yml");
     let m = App::from_yaml(yaml).version(VERSION).get_matches();
 
-    if let Some(sub_m) = m.subcommand_matches("master") {
+    if let Some(sub_m) = m.subcommand_matches("run") {
         run_master(sub_m);
     } else if let Some(sub_m) = m.subcommand_matches("slave") {
         run_slave(sub_m);

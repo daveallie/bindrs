@@ -31,6 +31,7 @@ cargo install --git https://github.com/daveallie/bindrs --tag v0.0.4
 ```
 $ bindrs -h
 BindRS 0.0.4
+Dave Allie
 Two way file syncer using platform native notify in Rust
 
 USAGE:
@@ -41,20 +42,20 @@ FLAGS:
     -V, --version    Prints version information
 
 SUBCOMMANDS:
-    help      Prints this message or the help of the given subcommand(s)
-    master    Runs BindRS in master mode - launches a slave
-    slave     Runs BindRS in slave mode - launched from a master
+    help     Prints this message or the help of the given subcommand(s)
+    run      Runs BindRS to keep two directories in sync
+    slave    Runs BindRS in slave mode - launched from a master process
 ```
 
 ---
 
 ```
 $ bindrs master -h
-bindrs-master 0.0.4
-Runs BindRS in master mode - launches a slave
+bindrs-run 0.0.4
+Runs BindRS to keep two directories in sync
 
 USAGE:
-    bindrs master [FLAGS] [OPTIONS] <BASE DIR> <REMOTE DIR>
+    bindrs run [FLAGS] [OPTIONS] <BASE DIR> <REMOTE DIR>
 
 FLAGS:
     -h, --help       Prints help information
@@ -67,13 +68,14 @@ OPTIONS:
 
 ARGS:
     <BASE DIR>      Local folder path
-    <REMOTE DIR>    Local folder path or folder path over ssh (<remote_user>@<remote_host>:<remote_dir>)
+    <REMOTE DIR>    Local folder path or folder path over ssh
+                    (<remote_user>@<remote_host>:<remote_dir>)
 ```
 
 ### Example command
 
 ```
-bindrs master -v /some/local/folder user@1.1.1.1:/some/remote/folder -p 2222 -i 'log' -i '^\tmp(?:/[^/]+){2,}$'
+bindrs run -v /some/local/folder user@1.1.1.1:/some/remote/folder -p 2222 -i 'log' -i '^\tmp(?:/[^/]+){2,}$'
 ```
 
 #### Command breakdown
@@ -109,7 +111,7 @@ Regex match ignores must start with a `^` and end with a `$`. The regex is teste
 against the relative path, so if you're syncing `/some/folder` and `/some/folder/some/file`
 changes, then `some/file` is what the regex will be tested against.
 
-An example is if you wanted to wanted to ignore all subdirectories of a `.tmp`,
+An example is if you wanted to wanted to ignore all subdirectories of `.tmp`,
 but allow all things in the root of `.tmp`, then your CLI argument would look
 like: `-i '^\.tmp/[^/]+/.*$'`.
 
