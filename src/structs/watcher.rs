@@ -34,13 +34,10 @@ impl BindrsWatcher {
         let (notify_tx, notify_rx) = channel();
         let (watch_loop_tx, watch_loop_rx) = channel();
 
-        let mut watcher = match watcher(notify_tx, Duration::from_millis(200)) {
-            Ok(w) => w,
-            Err(e) => {
-                helpers::log_error_and_exit(log, &format!("Failed to create watcher: {}", e));
-                panic!(e);
-            }
-        };
+        let mut watcher = watcher(notify_tx, Duration::from_millis(200)).unwrap_or_else(|e| {
+            helpers::log_error_and_exit(log, &format!("Failed to create watcher: {}", e));
+            panic!(e);
+        });
         watcher
             .watch(&self.dir, RecursiveMode::Recursive)
             .unwrap_or_else(|e| {

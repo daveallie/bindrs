@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Allow patch version difference between local and remote (warn if not exactly the same)
+
 ### Fixed
 - rsync crash on remote sync start
 

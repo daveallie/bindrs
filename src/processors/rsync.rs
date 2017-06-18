@@ -41,19 +41,15 @@ fn build_rsync_ignore_file(
     remote_info: &RemoteInfo,
     ignores: &RegexSet,
 ) -> String {
-    let mut ignore_file = match OpenOptions::new()
+    let mut ignore_file = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
-        .open(ignore_file_path) {
-        Ok(f) => f,
-        Err(e) => {
+        .open(ignore_file_path)
+        .unwrap_or_else(|e| {
             helpers::log_error_and_exit(log, &format!("Could not create temp file: {}", e));
             panic!(e);
-        }
-    };
-
-
+        });
 
     for path in find_rsync_ignore_folders(log, base_dir, remote_info, ignores) {
         if let Err(e) = writeln!(ignore_file, "{}", path) {
@@ -125,13 +121,10 @@ fn find_rsync_ignore_folders(
 }
 
 fn create_temp_dir(log: &Logger, name: &str) -> TempDir {
-    match TempDir::new(name) {
-        Ok(td) => td,
-        Err(e) => {
-            helpers::log_error_and_exit(log, &format!("Could not create temp directory: {}", e));
-            panic!(e);
-        }
-    }
+    TempDir::new(name).unwrap_or_else(|e| {
+        helpers::log_error_and_exit(log, &format!("Could not create temp directory: {}", e));
+        panic!(e);
+    })
 }
 
 #[cfg_attr(feature = "clippy", allow(filter_map))]

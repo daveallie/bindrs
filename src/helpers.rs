@@ -1,4 +1,5 @@
 use regex::RegexSet;
+use semver::Version;
 #[cfg(test)]
 use slog::Discard;
 use slog::Logger;
@@ -37,14 +38,56 @@ pub fn process_ignores(log: &Logger, vec: &mut Vec<String>) -> RegexSet {
     vec_to_regex_set(log, vec)
 }
 
-fn vec_to_regex_set(log: &Logger, ignores: &[String]) -> RegexSet {
-    match RegexSet::new(&convert_to_project_regex_strings(ignores)[..]) {
-        Ok(rs) => rs,
-        Err(e) => {
-            log_error_and_exit(log, &format!("Provided regex failed to parse: {}", e));
-            panic!() // For compilation
-        }
+pub fn compare_version_strings(log: &Logger, local_version_str: &str, remote_version_str: &str) {
+    let local_version = Version::parse(local_version_str).unwrap_or_else(|e| {
+        log_error_and_exit(
+            log,
+            &format!("Could not parse local version: {}", local_version_str),
+        );
+        panic!(e)
+    });
+    let remote_version = Version::parse(remote_version_str).unwrap_or_else(|e| {
+        log_error_and_exit(
+            log,
+            &format!("Could not parse remote version: {}", remote_version_str),
+        );
+        panic!(e)
+    });
+
+    if local_version == remote_version {
+        return;
     }
+
+    if versions_are_compatible(&local_version, &remote_version) {
+        warn!(
+            log,
+            "BindRS versions differ, consider updating older version to match the newer version. \
+             Local: {} - Remote: {}",
+            local_version_str,
+            remote_version_str
+        );
+    } else {
+        log_error_and_exit(
+            log,
+            &format!(
+                "BindRS versions too different between local and remote. \
+                 Please update older version to match newer version. Local: {} - Remote: {}",
+                local_version_str,
+                remote_version_str
+            ),
+        );
+    }
+}
+
+fn versions_are_compatible(version_a: &Version, version_b: &Version) -> bool {
+    version_a.major == version_b.major && version_a.minor == version_b.minor
+}
+
+fn vec_to_regex_set(log: &Logger, ignores: &[String]) -> RegexSet {
+    RegexSet::new(&convert_to_project_regex_strings(ignores)[..]).unwrap_or_else(|e| {
+        log_error_and_exit(log, &format!("Provided regex failed to parse: {}", e));
+        panic!() // For compilation
+    })
 }
 
 fn convert_to_project_regex_strings(ignores: &[String]) -> Vec<String> {
@@ -119,5 +162,26 @@ mod tests {
             canonicalize(path.as_path()).unwrap().to_str().unwrap(),
             resolve_path("./src/processors/../../src").unwrap()
         );
+    }
+
+    #[test]
+    fn versions_are_compatible_correctly_matches() {
+        let base_version = Version::parse("1.2.3").unwrap();
+        assert!(versions_are_compatible(
+            &Version::parse("1.2.3").unwrap(),
+            &base_version,
+        ));
+        assert!(versions_are_compatible(
+            &Version::parse("1.2.0").unwrap(),
+            &base_version,
+        ));
+        assert!(!versions_are_compatible(
+            &Version::parse("1.3.3").unwrap(),
+            &base_version,
+        ));
+        assert!(!versions_are_compatible(
+            &Version::parse("2.2.3").unwrap(),
+            &base_version,
+        ));
     }
 }

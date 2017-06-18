@@ -22,6 +22,7 @@ extern crate byteorder;
 extern crate filetime;
 extern crate time;
 extern crate tempdir;
+extern crate semver;
 
 use clap::{App, ArgMatches};
 use slog::Drain;

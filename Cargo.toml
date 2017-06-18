@@ -18,7 +18,8 @@ bincode = "~0.8"
 byteorder = "~1.0"
 filetime = "~0.1"
 time = "~0.1"
-tempdir = "*"
+tempdir = "~0.3"
+semver = "~0.7"
 clippy = {version = "*", optional = true}
 
 [dependencies.clap]

@@ -69,14 +69,7 @@ fn validate_remote_info(log: &Logger, remote_info: &RemoteInfo) {
         "Please install BindRS on the remote machine and add it to the path",
     );
 
-    check_cmd_output(
-        log,
-        remote_info,
-        "bindrs -V",
-        &[format!("BindRS {}", ::VERSION)],
-        true,
-        "Please make sure your local and remote versions of BindRS match",
-    );
+    check_version_information(log, remote_info);
 
     check_cmd_output(
         log,
@@ -106,6 +99,18 @@ fn check_cmd_output(
             helpers::log_error_and_exit(log, &format!("Failed to run '{}' on remote: {}", cmd, e))
         }
     }
+}
+
+fn check_version_information(log: &Logger, remote_info: &RemoteInfo) {
+    let mut output = get_cmd_output(remote_info, "bindrs --version").unwrap_or_else(|e| {
+        helpers::log_error_and_exit(
+            log,
+            &format!("Failed to get BindRS version from remote: {}", e),
+        );
+        panic!()
+    });
+
+    helpers::compare_version_strings(log, ::VERSION, &output.split_off(7));
 }
 
 fn get_cmd_output(remote_info: &RemoteInfo, cmd: &str) -> Result<String, io::Error> {
