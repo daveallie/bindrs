@@ -20,7 +20,14 @@ pub fn run(log: &Logger, base_dir: &str, remote_info: &RemoteInfo, ignores: &Reg
     info!(log, "Running initial rsync");
     match Command::new("rsync").args(&args).output() {
         Ok(output) => {
-            debug!(log, "{}", String::from_utf8_lossy(&output.stdout));
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if stdout != "" {
+                debug!(log, "{}", stdout);
+            }
+            if stderr != "" {
+                helpers::log_error_and_exit(log, &stderr);
+            }
             debug!(log, "Finished initial rsync");
         }
         Err(e) => helpers::log_error_and_exit(log, &format!("Failed to run rsync: {}", e)),
@@ -67,7 +74,8 @@ fn rsync_args(base_dir: &str, remote_info: &RemoteInfo, ignore_file_path: &str) 
     args.push(ignore_file_path.to_owned());
 
     if remote_info.is_remote {
-        args.push(format!(" -e \"ssh -p {}\"", remote_info.port));
+        args.push("-e".to_owned());
+        args.push(format!("ssh -p {}", remote_info.port));
     }
 
     args.push("--delete".to_owned());
