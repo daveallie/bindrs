@@ -18,7 +18,7 @@ Rebuilding https://github.com/daveallie/entangler in Rust.
 1. Install [Rustup](https://rustup.rs/)
 2. Run
 ```
-cargo install --git https://github.com/daveallie/bindrs --tag v0.1.0
+cargo install --git https://github.com/daveallie/bindrs --tag v0.1.1
 ```
 
 ### Installing binary manually
@@ -30,7 +30,7 @@ cargo install --git https://github.com/daveallie/bindrs --tag v0.1.0
 
 ```
 $ bindrs -h
-BindRS 0.1.0
+BindRS 0.1.1
 Dave Allie
 Two way file syncer using platform native notify in Rust
 
@@ -51,7 +51,7 @@ SUBCOMMANDS:
 
 ```
 $ bindrs run -h
-bindrs-run 0.1.0
+bindrs-run 0.1.1
 Runs BindRS to keep two directories in sync
 
 USAGE:
