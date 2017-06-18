@@ -117,6 +117,12 @@ like: `-i '^\.tmp/[^/]+/.*$'`.
 
 **Note:** You don't need to escape `/`.
 
+## Troubleshooting
+
+If you're using a JetBrains IDE, you should disable the "safe write" option:
+
+![jetbrains-safe-write](images/jetbrains-safe-write.png)
+
 ## Contributing
 
 1. Fork it!
