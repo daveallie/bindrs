@@ -51,7 +51,21 @@ fn build_rsync_ignore_file(
             panic!(e);
         });
 
-    for path in find_rsync_ignore_folders(log, base_dir, remote_info, ignores) {
+    let mut folders = find_rsync_ignore_folders(log, base_dir, remote_info, ignores);
+    folders.sort_by(|a, b| a.len().cmp(&b.len()));
+
+    let mut written_folders: Vec<String> = vec![];
+    for path in folders {
+        let parent_file_written = written_folders.iter().any(|written_path| {
+            path.starts_with(&format!("{}/", written_path))
+        });
+
+        if parent_file_written {
+            // Don't write folder path if parent's folder has already been ignored
+            continue;
+        }
+
+        written_folders.push(path.clone());
         if let Err(e) = writeln!(ignore_file, "{}", path) {
             helpers::log_error_and_exit(
                 log,
