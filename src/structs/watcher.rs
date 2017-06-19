@@ -9,7 +9,8 @@ use structs::bound_file::FileAction;
 
 #[cfg_attr(feature = "clippy", allow(stutter))]
 pub struct BindrsWatcher {
-    pub rx: Option<Receiver<(FileAction, String)>>,
+    pub rx: Option<Receiver<Option<(FileAction, String)>>>,
+    pub tx: Option<Sender<Option<(FileAction, String)>>>,
     dir: String,
     ignores: RegexSet,
     watcher: Option<RecommendedWatcher>,
@@ -21,6 +22,7 @@ impl BindrsWatcher {
     pub fn new(base_dir: &str, ignores: &RegexSet) -> BindrsWatcher {
         BindrsWatcher {
             rx: None,
+            tx: None,
             watch_loop_tx: None,
             dir: base_dir.to_owned(),
             ignores: ignores.to_owned(),
@@ -46,6 +48,7 @@ impl BindrsWatcher {
         self.watcher = Some(watcher);
         self.watch_loop_tx = Some(watch_loop_tx);
         self.rx = Some(final_rx);
+        self.tx = Some(final_tx.clone());
 
         self.thread = {
             let dir_length = self.dir.len() + 1;
@@ -84,7 +87,7 @@ impl BindrsWatcher {
                         .filter(|&(_, ref short_path)| !ignores.is_match(short_path));
 
                 for (t, p) in filtered_actions {
-                    let _ = final_tx.send((t, p.to_owned()));
+                    let _ = final_tx.send(Some((t, p.to_owned())));
                 }
             }))
         };

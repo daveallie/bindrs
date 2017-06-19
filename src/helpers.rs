@@ -1,3 +1,4 @@
+use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
 use regex::RegexSet;
 use semver::Version;
 #[cfg(test)]
@@ -7,6 +8,7 @@ use std::{thread, time};
 #[cfg(test)]
 use std::env::current_dir;
 use std::fs::canonicalize;
+use std::io::{Write, BufRead, Read};
 use std::path::Path;
 use std::process::exit;
 
@@ -77,6 +79,47 @@ pub fn compare_version_strings(log: &Logger, local_version_str: &str, remote_ver
             ),
         );
     }
+}
+
+pub fn write_content<T: Write>(log: &Logger, writer: &mut T, data: &[u8]) {
+    let len = data.len() as u64;
+    let mut wtr = vec![];
+    wtr.write_u64::<LittleEndian>(len).expect(
+        "Couldn't write stream length to remote!",
+    );
+
+    writer.write_all(&wtr[..]).expect(
+        "Couldn't write all bytes to remote!",
+    );
+
+    if len > 0 {
+        writer.write_all(data).expect(
+            "Couldn't write all bytes to remote!",
+        );
+    }
+
+    if writer.flush().is_err() {
+        error!(log, "Could not flush data to remote");
+    }
+}
+
+pub fn read_content<T: BufRead>(log: &Logger, reader: &mut T) -> Vec<u8> {
+    let len: u64 = if let Ok(v) = reader.read_u64::<LittleEndian>() {
+        v
+    } else {
+        error!(log, "Could not read payload length from remote");
+        0
+    };
+
+    let mut vec: Vec<u8> = vec![];
+
+    if len > 0 {
+        reader.take(len).read_to_end(&mut vec).expect(
+            "Couldn't read all bytes from remote!",
+        );
+    }
+
+    vec
 }
 
 fn versions_are_compatible(version_a: &Version, version_b: &Version) -> bool {

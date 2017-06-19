@@ -1,3 +1,4 @@
+use chan_signal::{self, Signal};
 use helpers;
 use regex::RegexSet;
 use slog::Logger;
@@ -5,12 +6,14 @@ use std::io::{Read, Write, BufWriter, BufReader};
 use std::marker::Send;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{self, TryRecvError, Receiver};
+use std::sync::mpsc::{self, TryRecvError, Receiver, Sender};
 use std::thread::{self, sleep};
 use std::time::Duration;
 use structs::bound_file::{BoundFile, FileAction};
 use structs::watcher::BindrsWatcher;
 use time;
+
+type LocalTx = Sender<Option<(FileAction, String)>>;
 
 pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
     log: &Logger,
@@ -20,13 +23,16 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
     writer: W,
 ) {
     let lock: Arc<Mutex<Vec<(String, i64, i32)>>> = Arc::new(Mutex::new(vec![]));
-    let lock_clone = lock.clone();
-
     let sync_count: Arc<Mutex<(u32, u32)>> = Arc::new(Mutex::new((0, 0)));
+    let local_watcher_kill_tx: Arc<Mutex<Option<LocalTx>>> = Arc::new(Mutex::new(None));
+
+    let signal = chan_signal::notify(&[Signal::INT, Signal::TERM]);
 
     let base_dir_clone = base_dir.to_owned();
     let log_clone = log.clone();
+    let lock_clone = lock.clone();
     let sync_count_clone = sync_count.clone();
+    let local_watcher_kill_tx_clone = local_watcher_kill_tx.clone();
     let child_1 = thread::spawn(move || {
         run_local_watcher(
             &log_clone,
@@ -35,14 +41,23 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
             writer,
             lock_clone,
             sync_count_clone,
+            local_watcher_kill_tx_clone,
         );
     });
 
     let base_dir_clone = base_dir.to_owned();
     let log_clone = log.clone();
     let sync_count_clone = sync_count.clone();
+    let local_watcher_kill_tx_clone = local_watcher_kill_tx.clone();
     let child_2 = thread::spawn(move || {
-        run_remote_listener(&log_clone, &base_dir_clone, reader, lock, sync_count_clone);
+        run_remote_listener(
+            &log_clone,
+            &base_dir_clone,
+            reader,
+            lock,
+            sync_count_clone,
+            local_watcher_kill_tx_clone,
+        );
     });
 
     let log_clone = log.clone();
@@ -53,9 +68,24 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
 
     info!(log, "Ready!");
 
+    // master local watcher gets None through receiver after interrupt signal comes through.
+    // master local watcher sends 0 bytes to slave remote watcher and closes.
+    // slave remote watcher sends None to slave local watcher and closes.
+    // save local watcher sends 0 bytes to master remote watcher and closes.
+    // master remote watcher tries to send 0 to master local watcher (which is no longer open),
+    //   and closes
+    // Both programs have ended.
+
+    let log_clone = log.clone();
+    let local_watcher_kill_tx_clone = local_watcher_kill_tx.clone();
+    thread::spawn(move || {
+        signal.recv();
+        send_local_watch_kill_if_possible(&log_clone, local_watcher_kill_tx_clone);
+        status_log_tx.send(()).unwrap_or_default();
+    });
+
     let _ = child_1.join();
     let _ = child_2.join();
-    status_log_tx.send(()).unwrap_or_default();
     let _ = child_3.join();
     info!(log, "BindRS Stopping");
 }
@@ -67,23 +97,50 @@ fn run_local_watcher<W: Write>(
     writer: W,
     lock: Arc<Mutex<Vec<(String, i64, i32)>>>,
     sync_count: Arc<Mutex<(u32, u32)>>,
+    local_watcher_kill_tx: Arc<Mutex<Option<LocalTx>>>,
 ) {
     let mut writer = BufWriter::new(writer);
     let mut watcher = BindrsWatcher::new(base_dir, ignores);
     watcher.watch(log);
     let rx = watcher.rx.unwrap_or_else(|| {
-        helpers::log_error_and_exit(log, "Couldn't get local receive channel off local watcher");
+        helpers::log_error_and_exit(log, "Couldn't get rx channel off local watcher");
         panic!();
     });
 
+    {
+        let mut tx = local_watcher_kill_tx.lock().unwrap_or_else(|_| {
+            helpers::log_error_and_exit(log, "Failed to acquire local fs lock, lock poisoned");
+            panic!()
+        });
+        *tx = watcher.tx;
+    }
+
     loop {
-        let (a, p) = rx.recv().unwrap_or_else(|e| {
+        let option = rx.recv().unwrap_or_else(|e| {
             helpers::log_error_and_exit(
                 log,
                 &format!("Failed to receive message from local watcher: {}", e),
             );
             panic!(e)
         });
+
+        // None is passed when program is exiting
+        if option.is_none() {
+            // Send 0 length data to signal end of program
+            helpers::write_content(log, &mut writer, &[0; 0]);
+
+            let mut tx = local_watcher_kill_tx.lock().unwrap_or_else(|_| {
+                helpers::log_error_and_exit(log, "Failed to acquire local fs lock, lock poisoned");
+                panic!()
+            });
+            *tx = None;
+
+            break;
+        }
+
+        // Safe, just check if it's none
+        let (a, p) = option.expect("Failed to unwrap local watcher result");
+
         let full_str_path = format!("{}/{}", base_dir, p);
         let full_path = Path::new(&full_str_path);
 
@@ -131,7 +188,7 @@ fn run_local_watcher<W: Write>(
         } else {
             let bf = BoundFile::build_from_path_action(base_dir, p, a);
             debug!(log, "Sending {} to remote", bf.path);
-            bf.to_writer(&mut writer);
+            bf.to_writer(log, &mut writer);
 
             {
                 let mut synced_nums = sync_count.lock().unwrap_or_else(|_| {
@@ -153,10 +210,20 @@ fn run_remote_listener<R: Read>(
     reader: R,
     lock: Arc<Mutex<Vec<(String, i64, i32)>>>,
     sync_count: Arc<Mutex<(u32, u32)>>,
+    local_watcher_kill_tx: Arc<Mutex<Option<LocalTx>>>,
 ) {
     let mut reader = BufReader::new(reader);
     loop {
-        let bf = BoundFile::from_reader(&mut reader);
+        let bf = BoundFile::from_reader(log, &mut reader);
+
+        if bf.is_none() {
+            send_local_watch_kill_if_possible(log, local_watcher_kill_tx);
+            break;
+        }
+
+        // Safe, just check if it's none
+        let bf = bf.expect("Could not unwrap bound file from remote");
+
         let mut recent_files = lock.lock().unwrap_or_else(|_| {
             helpers::log_error_and_exit(log, "Failed to aquire local fs lock, lock poisoned");
             panic!()
@@ -210,6 +277,23 @@ fn run_status_logger(log: &Logger, sync_count: Arc<Mutex<(u32, u32)>>, rx: &Rece
                 info!(log, "{}", message.join(" "));
                 *synced_nums = (0, 0)
             }
+        }
+    }
+}
+
+fn send_local_watch_kill_if_possible(
+    log: &Logger,
+    local_watcher_kill_tx: Arc<Mutex<Option<LocalTx>>>,
+) {
+    let mut tx = local_watcher_kill_tx.lock().unwrap_or_else(|_| {
+        helpers::log_error_and_exit(log, "Failed to acquire local fs lock, lock poisoned");
+        panic!()
+    });
+
+    if tx.is_some() {
+        let tx2 = tx.take().expect("Can't unwrap present option");
+        match tx2.send(None) {
+            _ => (),
         }
     }
 }

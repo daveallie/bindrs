@@ -23,6 +23,7 @@ extern crate filetime;
 extern crate time;
 extern crate tempdir;
 extern crate semver;
+extern crate chan_signal;
 
 use clap::{App, ArgMatches};
 use slog::Drain;

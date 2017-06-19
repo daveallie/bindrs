@@ -1,6 +1,7 @@
 use bincode::{serialize, deserialize, Infinite};
-use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
 use filetime::{self, FileTime};
+use helpers;
+use slog::Logger;
 use std::fs::{self, File};
 use std::io::{Write, BufRead, Read};
 use std::path::Path;
@@ -20,34 +21,18 @@ pub struct BoundFile {
 }
 
 impl BoundFile {
-    pub fn to_writer<T: Write>(&self, writer: &mut T) {
+    pub fn to_writer<T: Write>(&self, log: &Logger, writer: &mut T) {
         let encoded = &self.encode()[..];
-
-        let len = encoded.len() as u64;
-        let mut wtr = vec![];
-        wtr.write_u64::<LittleEndian>(len).expect(
-            "Couldn't write stream length to remote!",
-        );
-
-        writer.write_all(&wtr[..]).expect(
-            "Couldn't write all bytes to remote!",
-        );
-        writer.write_all(encoded).expect(
-            "Couldn't write all bytes to remote!",
-        );
-        writer.flush().expect("Couldn't flush all bytes to remote!");
+        helpers::write_content(log, writer, encoded);
     }
 
-    pub fn from_reader<T: BufRead>(reader: &mut T) -> BoundFile {
-        let len: u64 = reader.read_u64::<LittleEndian>().expect(
-            "Couldn't read stream length from remote!",
-        );
-
-        let mut vec: Vec<u8> = vec![];
-        reader.take(len).read_to_end(&mut vec).expect(
-            "Couldn't read all bytes from remote!",
-        );
-        BoundFile::decode(&vec[..])
+    pub fn from_reader<T: BufRead>(log: &Logger, reader: &mut T) -> Option<BoundFile> {
+        let vec = helpers::read_content(log, reader);
+        if vec.is_empty() {
+            None
+        } else {
+            Some(BoundFile::decode(&vec[..]))
+        }
     }
 
     pub fn build_from_path_action(base_dir: &str, path: String, action: FileAction) -> BoundFile {
