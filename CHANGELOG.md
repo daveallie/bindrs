@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2017-06-19
+### Fixed
+- Ignores are now respected when syncing
+- Rsync ignore file substantially cut down by skipping folder if parent folder already ignored
+
 ## [0.1.1] - 2017-06-18
 ### Changed
 - Allow patch version difference between local and remote (warn if not exactly the same)
@@ -50,7 +55,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Wait between last error log and exit, allows log to flush
 - Allow release builds to log debug lines (needed for verbose mode)
 
-[Unreleased]: https://github.com/daveallie/bindrs/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/daveallie/bindrs/compare/v0.1.2...HEAD
+[0.1.1]: https://github.com/daveallie/bindrs/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/daveallie/bindrs/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/daveallie/bindrs/compare/v0.0.4...v0.1.0
 [0.0.4]: https://github.com/daveallie/bindrs/compare/v0.0.3...v0.0.4
