@@ -114,10 +114,8 @@ fn check_version_information(log: &Logger, remote_info: &RemoteInfo) {
 }
 
 fn get_cmd_output(remote_info: &RemoteInfo, cmd: &str) -> Result<String, io::Error> {
-    let output = try!(
-        remote_info
-            .generate_command(&mut remote_info.base_command(cmd), cmd)
-            .output()
-    );
+    let output = remote_info
+        .generate_command(&mut remote_info.base_command(cmd), cmd)
+        .output()?;
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
 }

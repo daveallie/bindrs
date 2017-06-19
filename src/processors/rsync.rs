@@ -40,7 +40,7 @@ fn build_rsync_ignore_file(
     base_dir: &str,
     remote_info: &RemoteInfo,
     ignores: &RegexSet,
-) -> String {
+) {
     let mut ignore_file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -59,8 +59,6 @@ fn build_rsync_ignore_file(
             )
         }
     }
-
-    "".to_owned()
 }
 
 fn rsync_args(base_dir: &str, remote_info: &RemoteInfo, ignore_file_path: &str) -> Vec<String> {

@@ -63,13 +63,13 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
 fn run_local_watcher<W: Write>(
     log: &Logger,
     base_dir: &str,
-    ingores: &RegexSet,
+    ignores: &RegexSet,
     writer: W,
     lock: Arc<Mutex<Vec<(String, i64, i32)>>>,
     sync_count: Arc<Mutex<(u32, u32)>>,
 ) {
     let mut writer = BufWriter::new(writer);
-    let mut watcher = BindrsWatcher::new(base_dir, ingores);
+    let mut watcher = BindrsWatcher::new(base_dir, ignores);
     watcher.watch(log);
     let rx = watcher.rx.unwrap_or_else(|| {
         helpers::log_error_and_exit(log, "Couldn't get local receive channel off local watcher");
