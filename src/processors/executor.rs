@@ -1,8 +1,7 @@
-use chan_signal::{self, Signal};
 use helpers;
 use regex::RegexSet;
 use slog::Logger;
-use std::io::{Read, Write, BufWriter, BufReader};
+use std::io::{stdin, Read, Write, BufWriter, BufReader};
 use std::marker::Send;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -25,8 +24,6 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
     let lock: Arc<Mutex<Vec<(String, i64, i32)>>> = Arc::new(Mutex::new(vec![]));
     let sync_count: Arc<Mutex<(u32, u32)>> = Arc::new(Mutex::new((0, 0)));
     let local_watcher_kill_tx: Arc<Mutex<Option<LocalTx>>> = Arc::new(Mutex::new(None));
-
-    let signal = chan_signal::notify(&[Signal::INT, Signal::TERM]);
 
     let base_dir_clone = base_dir.to_owned();
     let log_clone = log.clone();
@@ -79,7 +76,12 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
     let log_clone = log.clone();
     let local_watcher_kill_tx_clone = local_watcher_kill_tx.clone();
     thread::spawn(move || {
-        signal.recv();
+        loop {
+            let mut input = String::new();
+            if stdin().read_line(&mut input).is_ok() && input.trim() == "exit" {
+                break;
+            }
+        }
         send_local_watch_kill_if_possible(&log_clone, local_watcher_kill_tx_clone);
         status_log_tx.send(()).unwrap_or_default();
     });

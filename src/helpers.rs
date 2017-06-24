@@ -92,6 +92,8 @@ pub fn write_content<T: Write>(log: &Logger, writer: &mut T, data: &[u8]) {
         "Couldn't write all bytes to remote!",
     );
 
+    trace!(log, "Sent payload header. Payload length: {}", len);
+
     if len > 0 {
         writer.write_all(data).expect(
             "Couldn't write all bytes to remote!",
@@ -110,6 +112,8 @@ pub fn read_content<T: BufRead>(log: &Logger, reader: &mut T) -> Vec<u8> {
         error!(log, "Could not read payload length from remote");
         0
     };
+
+    trace!(log, "Read payload header. Payload length: {}", len);
 
     let mut vec: Vec<u8> = vec![];
 
