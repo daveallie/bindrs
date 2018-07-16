@@ -1,4 +1,4 @@
-use bincode::{serialize, deserialize, Infinite};
+use bincode::{serialize, deserialize};
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
 use filetime::{self, FileTime};
 use std::fs::{self, File};
@@ -15,7 +15,7 @@ pub enum FileAction {
 pub struct BoundFile {
     pub action: FileAction,
     pub path: String,
-    pub mtime: u64,
+    pub mtime: i64,
     pub contents: Vec<u8>,
 }
 
@@ -62,7 +62,7 @@ impl BoundFile {
             );
             let mtime = FileTime::from_last_modification_time(
                 &file.metadata().expect("Failed to read BoundFile metadata"),
-            ).seconds_relative_to_1970();
+            ).unix_seconds();
             BoundFile {
                 action: action,
                 path: path,
@@ -115,7 +115,7 @@ impl BoundFile {
                 full_str_path
             ));
 
-            let file_time = FileTime::from_seconds_since_1970(self.mtime, 0);
+            let file_time = FileTime::from_unix_time(self.mtime, 0);
             filetime::set_file_times(full_path, file_time, file_time)
                 .expect(&format!("Failed to set file time at: {}", full_str_path));
         } else if file_exists {
@@ -128,7 +128,7 @@ impl BoundFile {
     }
 
     fn encode(&self) -> Vec<u8> {
-        serialize(&self, Infinite).expect("Failed to encode BoundFile")
+        serialize(&self).expect("Failed to encode BoundFile")
     }
 
     fn decode(bytes: &[u8]) -> BoundFile {
