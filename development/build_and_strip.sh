@@ -5,23 +5,35 @@ set -e
 cd "$(dirname $0)"
 cd ..
 
-rm ./target/release/bindrs &>/dev/null || true
-FULL_TOOLCHAIN="$(rustup toolchain list | grep default | awk '{print $1}' | cut -d '-' -f2-)"
-cargo build --release
+case `uname -s` in
+    Linux)
+        FULL_TOOLCHAIN="x86_64-unknown-linux-gnu"
+        ;;
+    Darwin)
+        FULL_TOOLCHAIN="x86_64-apple-darwin"
+        ;;
+    *)
+        FULL_TOOLCHAIN="$(rustup toolchain list | grep default | awk '{print $1}' | cut -d '-' -f2-)"
+        ;;
+esac
 
-echo "Before Strip: $(ls -lh ./target/release/bindrs | awk '{print $5}')"
-strip ./target/release/bindrs
-echo " After Strip: $(ls -lh ./target/release/bindrs | awk '{print $5}')"
+RELEASE_FOLDER="./target/${FULL_TOOLCHAIN}/release"
+BINARY_PATH="${RELEASE_FOLDER}/bindrs"
+ZIP_FILE="bindrs-$(git rev-parse --short HEAD)-${FULL_TOOLCHAIN}.tar.gz"
+ZIP_PATH="${RELEASE_FOLDER}/${ZIP_FILE}"
+FINAL_ZIP_PATH="./pkg/${ZIP_FILE}"
 
-VERSION="$(./target/release/bindrs -V | awk '{print $2}')"
-FILENAME="bindrs-$VERSION-$FULL_TOOLCHAIN.tar.gz"
+rm ${BINARY_PATH} &>/dev/null || true
+rm ${ZIP_PATH} &>/dev/null || true
+cargo build --release --target ${FULL_TOOLCHAIN}
 
-cd ./target/release
-tar -zcf $FILENAME ./bindrs
-echo "GZipped File: $(ls -lh $FILENAME | awk '{print $5}')"
+echo "Before Strip: $(ls -lh ${BINARY_PATH} | awk '{print $5}')"
+strip ${BINARY_PATH}
+echo " After Strip: $(ls -lh ${BINARY_PATH} | awk '{print $5}')"
 
-cd ../..
-mkdir -p ./pkg
-mv ./target/release/$FILENAME ./pkg/
+tar -zcf ${ZIP_PATH} ${BINARY_PATH}
+echo "GZipped File: $(ls -lh ${ZIP_PATH} | awk '{print $5}')"
 
-echo "Built and zipped to ./pkg/$FILENAME"
+mv ${ZIP_PATH} ${FINAL_ZIP_PATH}
+
+echo "Built and zipped to ${FINAL_ZIP_PATH}"
