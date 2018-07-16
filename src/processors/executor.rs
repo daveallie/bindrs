@@ -12,6 +12,8 @@ use structs::bound_file::{BoundFile, FileAction};
 use structs::watcher::BindrsWatcher;
 use time;
 
+type WatchLock = Arc<Mutex<Vec<(String, i64, i32)>>>;
+
 pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
     log: &Logger,
     base_dir: &str,
@@ -19,7 +21,7 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
     reader: R,
     writer: W,
 ) {
-    let lock: Arc<Mutex<Vec<(String, i64, i32)>>> = Arc::new(Mutex::new(vec![]));
+    let lock: WatchLock = Arc::new(Mutex::new(vec![]));
     let lock_clone = lock.clone();
 
     let sync_count: Arc<Mutex<(u32, u32)>> = Arc::new(Mutex::new((0, 0)));
@@ -33,8 +35,8 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
             &base_dir_clone,
             &ignores,
             writer,
-            lock_clone,
-            sync_count_clone,
+            &lock_clone,
+            &sync_count_clone,
         );
     });
 
@@ -42,13 +44,19 @@ pub fn start<R: Read + Send + 'static, W: Write + Send + 'static>(
     let log_clone = log.clone();
     let sync_count_clone = sync_count.clone();
     let child_2 = thread::spawn(move || {
-        run_remote_listener(&log_clone, &base_dir_clone, reader, lock, sync_count_clone);
+        run_remote_listener(
+            &log_clone,
+            &base_dir_clone,
+            reader,
+            &lock,
+            &sync_count_clone,
+        );
     });
 
     let log_clone = log.clone();
     let (status_log_tx, status_log_rx) = mpsc::channel();
     let child_3 = thread::spawn(move || {
-        run_status_logger(&log_clone, sync_count, &status_log_rx);
+        run_status_logger(&log_clone, &sync_count, &status_log_rx);
     });
 
     info!(log, "Ready!");
@@ -65,8 +73,8 @@ fn run_local_watcher<W: Write>(
     base_dir: &str,
     ignores: &RegexSet,
     writer: W,
-    lock: Arc<Mutex<Vec<(String, i64, i32)>>>,
-    sync_count: Arc<Mutex<(u32, u32)>>,
+    lock: &WatchLock,
+    sync_count: &Arc<Mutex<(u32, u32)>>,
 ) {
     let mut writer = BufWriter::new(writer);
     let mut watcher = BindrsWatcher::new(base_dir, ignores);
@@ -103,18 +111,18 @@ fn run_local_watcher<W: Write>(
                 (now_spec.sec, now_spec.nsec)
             };
 
-            recent_files.retain(|&(_, ref time_s, ref time_nano_s)| {
-                if now_s - time_s > 1 {
-                    false
-                } else if now_s - time_s == 1 {
-                    now_nano_s - time_nano_s + 1000000000 /* 1e9 */ < 500000000 // 5e8
-                } else {
-                    now_nano_s - time_nano_s < 500000000 // 5e8
-                }
+            recent_files.retain(|&(_, ref time_s, ref time_nano_s)| if now_s - time_s > 1 {
+                false
+            } else if now_s - time_s == 1 {
+                now_nano_s - time_nano_s + 1_000_000_000 < 500_000_000
+            } else {
+                now_nano_s - time_nano_s < 500_000_000
             });
 
             if recent_files.iter().map(|&(ref path, _, _)| path).any(
-                |&ref path| &p_clone == path,
+                |path| {
+                    &p_clone == path
+                },
             )
             {
                 continue;
@@ -135,10 +143,7 @@ fn run_local_watcher<W: Write>(
 
             {
                 let mut synced_nums = sync_count.lock().unwrap_or_else(|_| {
-                    helpers::log_error_and_exit(
-                        log,
-                        "Failed to aquire sync count lock, lock poisoned",
-                    );
+                    helpers::log_error_and_exit(log, "Failed to aquire sync count lock, lock poisoned");
                     panic!()
                 });
                 synced_nums.0 += 1;
@@ -151,8 +156,8 @@ fn run_remote_listener<R: Read>(
     log: &Logger,
     base_dir: &str,
     reader: R,
-    lock: Arc<Mutex<Vec<(String, i64, i32)>>>,
-    sync_count: Arc<Mutex<(u32, u32)>>,
+    lock: &WatchLock,
+    sync_count: &Arc<Mutex<(u32, u32)>>,
 ) {
     let mut reader = BufReader::new(reader);
     loop {
@@ -180,7 +185,7 @@ fn run_remote_listener<R: Read>(
     }
 }
 
-fn run_status_logger(log: &Logger, sync_count: Arc<Mutex<(u32, u32)>>, rx: &Receiver<()>) {
+fn run_status_logger(log: &Logger, sync_count: &Arc<Mutex<(u32, u32)>>, rx: &Receiver<()>) {
     loop {
         sleep(Duration::from_millis(1000));
         match rx.try_recv() {

@@ -36,9 +36,10 @@ mod helpers;
 mod processors;
 mod structs;
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
+    #[cfg_attr(feature="clippy", allow(indexing_slicing))]
     let yaml = load_yaml!("cli.yml");
     let m = App::from_yaml(yaml).version(VERSION).get_matches();
 
@@ -130,8 +131,7 @@ fn setup_log(base_dir: &str, verbose_mode: bool, master_mode: bool) -> slog::Log
 
         if master_mode {
             let term_decorator = slog_term::TermDecorator::new().build();
-            let term_drain = Mutex::new(slog_term::CompactFormat::new(term_decorator).build())
-                .fuse();
+            let term_drain = Mutex::new(slog_term::CompactFormat::new(term_decorator).build()).fuse();
             let term_drain = slog::LevelFilter::new(term_drain, level);
             let drain = slog::Duplicate::new(file_drain, term_drain);
 

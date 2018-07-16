@@ -23,7 +23,7 @@ filetime = "~0.2"
 time = "~0.1"
 tempdir = "~0.3"
 semver = "~0.9"
-clippy = {version = "*", optional = true}
+clippy = {version = "*", git = "https://github.com/rust-lang-nursery/rust-clippy", optional = true}
 
 [dependencies.clap]
 version = "~2.31"

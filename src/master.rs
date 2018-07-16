@@ -19,15 +19,20 @@ pub fn run(
     validate_remote_directory(log, &remote_info);
     let bindrs_path = validate_remote_bindrs(log, &remote_info);
     rsync::run(log, base_dir, &remote_info, &ignores);
-    let (remote_reader, remote_writer) =
-        start_remote_slave(log, &remote_info, bindrs_path, ignore_strings, verbose_mode);
+    let (remote_reader, remote_writer) = start_remote_slave(
+        log,
+        &remote_info,
+        &bindrs_path,
+        ignore_strings,
+        verbose_mode,
+    );
     executor::start(log, base_dir, ignores, remote_reader, remote_writer);
 }
 
 fn start_remote_slave(
     log: &Logger,
     remote_info: &RemoteInfo,
-    bindrs_path: String,
+    bindrs_path: &str,
     ignores: &mut Vec<String>,
     verbose_mode: bool,
 ) -> (ChildStdout, ChildStdin) {
@@ -37,7 +42,12 @@ fn start_remote_slave(
         .map(|i| format!("--ignore \"{}\"", i))
         .collect();
 
-    let mut cmd = format!("{} slave {} {}", bindrs_path, remote_info.path, ignore_args.join(" "));
+    let mut cmd = format!(
+        "{} slave {} {}",
+        bindrs_path,
+        remote_info.path,
+        ignore_args.join(" ")
+    );
 
     if verbose_mode {
         cmd += " -v"
@@ -83,25 +93,33 @@ fn validate_remote_bindrs(log: &Logger, remote_info: &RemoteInfo) -> String {
     ) {
         Ok(path) => path,
         Err(_) => {
-            match check_cmd_output(
+            if let Ok(path) = check_cmd_output(
                 log,
                 remote_info,
                 &format!("PATH={}/.bindrs:$PATH which bindrs", remote_info.path),
                 &["bindrs not found".to_string(), "".to_string()],
                 false,
-            ) {
-                Ok(path) => path,
-                Err(_) => {
-                    helpers::log_error_and_exit(log, "Please install BindRS on the remote machine and add it to the path");
-                    panic!() // For compilation
-                }
+            )
+            {
+                path
+            } else {
+                helpers::log_error_and_exit(
+                    log,
+                    "Please install BindRS on the remote machine and add it to the path",
+                );
+                panic!() // For compilation
             }
         }
     };
 
     match get_cmd_output(remote_info, &format!("{} --version", bindrs_path)) {
         Ok(mut output) => helpers::compare_version_strings(log, ::VERSION, &output.split_off(7)),
-        Err(e) => helpers::log_error_and_exit(log, &format!("Failed to get BindRS version from remote: {}", e))
+        Err(e) => {
+            helpers::log_error_and_exit(
+                log,
+                &format!("Failed to get BindRS version from remote: {}", e),
+            )
+        }
     };
 
     bindrs_path

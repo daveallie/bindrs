@@ -38,7 +38,7 @@ impl BoundFile {
         writer.flush().expect("Couldn't flush all bytes to remote!");
     }
 
-    pub fn from_reader<T: BufRead>(reader: &mut T) -> BoundFile {
+    pub fn from_reader<T: BufRead>(reader: &mut T) -> Self {
         let len: u64 = reader.read_u64::<LittleEndian>().expect(
             "Couldn't read stream length from remote!",
         );
@@ -47,10 +47,10 @@ impl BoundFile {
         reader.take(len).read_to_end(&mut vec).expect(
             "Couldn't read all bytes from remote!",
         );
-        BoundFile::decode(&vec[..])
+        Self::decode(&vec[..])
     }
 
-    pub fn build_from_path_action(base_dir: &str, path: String, action: FileAction) -> BoundFile {
+    pub fn build_from_path_action(base_dir: &str, path: String, action: FileAction) -> Self {
         if action == FileAction::CreateUpdate {
             // Write or Create
             let mut vec: Vec<u8> = vec![];
@@ -63,17 +63,17 @@ impl BoundFile {
             let mtime = FileTime::from_last_modification_time(
                 &file.metadata().expect("Failed to read BoundFile metadata"),
             ).unix_seconds();
-            BoundFile {
-                action: action,
-                path: path,
-                mtime: mtime,
+            Self {
+                action,
+                path,
+                mtime,
                 contents: vec,
             }
         } else {
             // Delete
-            BoundFile {
-                action: action,
-                path: path,
+            Self {
+                action,
+                path,
                 mtime: 0,
                 contents: vec![],
             }
@@ -85,45 +85,39 @@ impl BoundFile {
         let full_path = Path::new(&full_str_path);
         let mut file_exists = full_path.exists();
         if file_exists && full_path.is_dir() {
-            fs::remove_dir_all(&full_path).expect(&format!(
-                "Failed to remove folder where file should be: {}",
-                full_str_path
-            ));
+            fs::remove_dir_all(&full_path).unwrap_or_else(|_| {
+                panic!(
+                    "Failed to remove folder where file should be: {}",
+                    full_str_path
+                )
+            });
             file_exists = false;
         }
 
         if self.action == FileAction::CreateUpdate {
             // Write or Create
-            let parent = full_path.parent().expect(&format!(
-                "Failed to get parent for: {}",
-                full_str_path
-            ));
-            fs::create_dir_all(&parent).expect(&format!(
-                "Failed to create parent directory for: {}",
-                full_str_path
-            ));
-            let mut file = File::create(&full_path).expect(&format!(
-                "Failed to open/create file at: {}",
-                full_str_path
-            ));
-            file.write_all(&self.contents[..]).expect(&format!(
-                "Failed to write all bytes to: {}",
-                full_str_path
-            ));
-            file.sync_all().expect(&format!(
-                "Failed to sync contents at: {}",
-                full_str_path
-            ));
+            let parent = full_path.parent().unwrap_or_else(|| {
+                panic!("Failed to get parent for: {}", full_str_path)
+            });
+            fs::create_dir_all(&parent).unwrap_or_else(|_| {
+                panic!("Failed to create parent directory for: {}", full_str_path)
+            });
+            let mut file = File::create(&full_path).unwrap_or_else(|_| {
+                panic!("Failed to open/create file at: {}", full_str_path)
+            });
+            file.write_all(&self.contents[..]).unwrap_or_else(|_| {
+                panic!("Failed to write all bytes to: {}", full_str_path)
+            });
+            file.sync_all().unwrap_or_else(|_| {
+                panic!("Failed to sync contents at: {}", full_str_path)
+            });
 
             let file_time = FileTime::from_unix_time(self.mtime, 0);
             filetime::set_file_times(full_path, file_time, file_time)
-                .expect(&format!("Failed to set file time at: {}", full_str_path));
+                .unwrap_or_else(|_| panic!("Failed to set file time at: {}", full_str_path));
         } else if file_exists {
             // Delete
-            fs::remove_file(&full_path).expect(&format!(
-                "Failed to delete file at: {}",
-                full_str_path
-            ));
+            fs::remove_file(&full_path).unwrap_or_else(|_| panic!("Failed to delete file at: {}", full_str_path));
         }
     }
 
@@ -131,7 +125,7 @@ impl BoundFile {
         serialize(&self).expect("Failed to encode BoundFile")
     }
 
-    fn decode(bytes: &[u8]) -> BoundFile {
+    fn decode(bytes: &[u8]) -> Self {
         deserialize(bytes).expect("Failed to decode BoundFile")
     }
 }

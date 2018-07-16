@@ -15,10 +15,10 @@ pub fn run(log: &Logger, base_dir: &str, remote_info: &RemoteInfo, ignores: &Reg
     let ignore_file_string_path = ignore_file_path.to_string_lossy().into_owned();
 
     build_rsync_ignore_file(log, ignore_file_path, base_dir, remote_info, ignores);
-    let args = rsync_args(base_dir, remote_info, &ignore_file_string_path);
+    let args_vec = rsync_args(base_dir, remote_info, &ignore_file_string_path);
 
     info!(log, "Running initial rsync");
-    match Command::new("rsync").args(&args).output() {
+    match Command::new("rsync").args(&args_vec).output() {
         Ok(output) => {
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -76,21 +76,21 @@ fn build_rsync_ignore_file(
 }
 
 fn rsync_args(base_dir: &str, remote_info: &RemoteInfo, ignore_file_path: &str) -> Vec<String> {
-    let mut args: Vec<String> = vec!["-azv".to_owned()];
+    let mut args_vec: Vec<String> = vec!["-azv".to_owned()];
 
-    args.push("--exclude-from".to_owned());
-    args.push(ignore_file_path.to_owned());
+    args_vec.push("--exclude-from".to_owned());
+    args_vec.push(ignore_file_path.to_owned());
 
     if remote_info.is_remote {
-        args.push("-e".to_owned());
-        args.push(format!("ssh -p {}", remote_info.port));
+        args_vec.push("-e".to_owned());
+        args_vec.push(format!("ssh -p {}", remote_info.port));
     }
 
-    args.push("--delete".to_owned());
-    args.push("--ignore-errors".to_owned());
-    args.push(format!("{}/", base_dir));
-    args.push(remote_info.full_path_trailing_slash());
-    args
+    args_vec.push("--delete".to_owned());
+    args_vec.push("--ignore-errors".to_owned());
+    args_vec.push(format!("{}/", base_dir));
+    args_vec.push(remote_info.full_path_trailing_slash());
+    args_vec
 }
 
 fn find_rsync_ignore_folders(

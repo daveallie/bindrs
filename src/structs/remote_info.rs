@@ -10,12 +10,12 @@ pub struct RemoteInfo {
 }
 
 impl RemoteInfo {
-    pub fn build(remote_dir: &str, port: Option<&str>) -> RemoteInfo {
+    pub fn build(remote_dir: &str, port: Option<&str>) -> Self {
         #[cfg_attr(feature="clippy", allow(result_unwrap_used))]
         // Unwrap is safe - hard coded string
         let regex = Regex::new("([^@]+)@([^:]+):(.+)").unwrap();
         if let Some(captures) = regex.captures(remote_dir) {
-            RemoteInfo {
+            Self {
                 is_remote: true,
                 // Unwrap is safe - capture group exists in regex
                 path: captures.get(3).unwrap().as_str().to_owned(),
@@ -27,7 +27,7 @@ impl RemoteInfo {
                 },
             }
         } else {
-            RemoteInfo {
+            Self {
                 is_remote: false,
                 path: remote_dir.to_owned(),
                 user: "".to_owned(),

@@ -18,8 +18,8 @@ pub struct BindrsWatcher {
 }
 
 impl BindrsWatcher {
-    pub fn new(base_dir: &str, ignores: &RegexSet) -> BindrsWatcher {
-        BindrsWatcher {
+    pub fn new(base_dir: &str, ignores: &RegexSet) -> Self {
+        Self {
             rx: None,
             watch_loop_tx: None,
             dir: base_dir.to_owned(),
@@ -65,23 +65,20 @@ impl BindrsWatcher {
                     DebouncedEvent::Create(p) |
                     DebouncedEvent::Write(p) => vec![(FileAction::CreateUpdate, p)],
                     DebouncedEvent::Remove(p) => vec![(FileAction::Delete, p)],
-                    DebouncedEvent::Rename(p1, p2) => {
-                        vec![(FileAction::Delete, p1), (FileAction::CreateUpdate, p2)]
-                    }
+                    DebouncedEvent::Rename(p1, p2) => vec![(FileAction::Delete, p1), (FileAction::CreateUpdate, p2)],
                     _ => vec![],
                 };
 
-                let filtered_actions =
-                    actions
-                        .into_iter()
-                        .filter_map(|(t, p)| match p.to_str() {
-                            Some(path) => {
-                                let short_path: String = path.chars().skip(dir_length).collect();
-                                Some((t, short_path))
-                            }
-                            None => None,
-                        })
-                        .filter(|&(_, ref short_path)| !ignores.is_match(short_path));
+                let filtered_actions = actions
+                    .into_iter()
+                    .filter_map(|(t, p)| match p.to_str() {
+                        Some(path) => {
+                            let short_path: String = path.chars().skip(dir_length).collect();
+                            Some((t, short_path))
+                        }
+                        None => None,
+                    })
+                    .filter(|&(_, ref short_path)| !ignores.is_match(short_path));
 
                 for (t, p) in filtered_actions {
                     let _ = final_tx.send((t, p.to_owned()));
