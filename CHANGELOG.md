@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- Download BindRS on remote in `.bindrs` directory if it can't be found on the path.
+
 ### Changed
 - Dependency updates
 

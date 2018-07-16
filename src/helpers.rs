@@ -9,6 +9,7 @@ use std::env::current_dir;
 use std::fs::canonicalize;
 use std::path::Path;
 use std::process::exit;
+use structs::remote_info::RemoteInfo;
 
 pub fn resolve_path(dir: &str) -> Option<String> {
     match canonicalize(Path::new(dir)) {
@@ -76,6 +77,42 @@ pub fn compare_version_strings(log: &Logger, local_version_str: &str, remote_ver
                 remote_version_str
             ),
         );
+    }
+}
+
+pub fn download_bindrs(log: &Logger, remote_info: &RemoteInfo) -> bool {
+    let host_triple = match remote_info.check_cmd_output(
+        log,
+        "uname",
+        &["Darwin".to_string(), "Linux".to_string()],
+        true,
+    ) {
+        Ok(uname) => {
+            match uname.as_ref() {
+                "Darwin" => "x86_64-apple-darwin",
+                "Linux" => "x86_64-unknown-linux-gnu",
+                _ => return false,
+            }
+        }
+        Err(_) => return false,
+    };
+
+    let url = format!(
+        "https://github.com/daveallie/bindrs/releases/download/v{version}/bindrs-{version}-{triple}.tar.gz",
+        version = ::VERSION,
+        triple = host_triple
+    );
+    if remote_info.run_cmd(&format!(
+        "curl -L {} | tar xz -C {}/.bindrs",
+        url,
+        remote_info.path
+    ))
+    {
+        info!(log, "BindRS downloaded successfully, rechecking binary");
+        true
+    } else {
+        error!(log, "BindRS failed to download");
+        false
     }
 }
 

@@ -119,12 +119,13 @@ fn run_local_watcher<W: Write>(
                 now_nano_s - time_nano_s < 500_000_000
             });
 
-            if recent_files.iter().map(|&(ref path, _, _)| path).any(
+            let file_was_recently_synced = recent_files.iter().map(|&(ref path, _, _)| path).any(
                 |path| {
                     &p_clone == path
                 },
-            )
-            {
+            );
+
+            if file_was_recently_synced {
                 continue;
             }
         }

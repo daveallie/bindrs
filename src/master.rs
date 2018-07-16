@@ -1,7 +1,7 @@
 use helpers;
 use processors::{executor, rsync};
 use slog::Logger;
-use std::{time, thread, io};
+use std::{time, thread};
 use std::process::{Stdio, ChildStdout, ChildStdin};
 use structs::remote_info::RemoteInfo;
 
@@ -17,7 +17,7 @@ pub fn run(
     let remote_info = RemoteInfo::build(remote_dir, port);
 
     validate_remote_directory(log, &remote_info);
-    let bindrs_path = validate_remote_bindrs(log, &remote_info);
+    let bindrs_path = validate_remote_bindrs(log, &remote_info, false);
     rsync::run(log, base_dir, &remote_info, &ignores);
     let (remote_reader, remote_writer) = start_remote_slave(
         log,
@@ -83,19 +83,17 @@ fn validate_remote_directory(log: &Logger, remote_info: &RemoteInfo) {
     );
 }
 
-fn validate_remote_bindrs(log: &Logger, remote_info: &RemoteInfo) -> String {
-    let bindrs_path = match check_cmd_output(
+fn validate_remote_bindrs(log: &Logger, remote_info: &RemoteInfo, download_attempted: bool) -> String {
+    let bindrs_path = match remote_info.check_cmd_output(
         log,
-        remote_info,
         "which bindrs",
         &["bindrs not found".to_string(), "".to_string()],
         false,
     ) {
         Ok(path) => path,
         Err(_) => {
-            if let Ok(path) = check_cmd_output(
+            if let Ok(path) = remote_info.check_cmd_output(
                 log,
-                remote_info,
                 &format!("PATH={}/.bindrs:$PATH which bindrs", remote_info.path),
                 &["bindrs not found".to_string(), "".to_string()],
                 false,
@@ -103,6 +101,16 @@ fn validate_remote_bindrs(log: &Logger, remote_info: &RemoteInfo) -> String {
             {
                 path
             } else {
+                if !download_attempted {
+                    warn!(
+                        log,
+                        "BindRS missing on remote, attempting to download to .bindrs dir"
+                    );
+                    if helpers::download_bindrs(log, remote_info) {
+                        return validate_remote_bindrs(log, remote_info, true);
+                    }
+                }
+
                 helpers::log_error_and_exit(
                     log,
                     "Please install BindRS on the remote machine and add it to the path",
@@ -112,7 +120,7 @@ fn validate_remote_bindrs(log: &Logger, remote_info: &RemoteInfo) -> String {
         }
     };
 
-    match get_cmd_output(remote_info, &format!("{} --version", bindrs_path)) {
+    match remote_info.get_cmd_output(&format!("{} --version", bindrs_path)) {
         Ok(mut output) => helpers::compare_version_strings(log, ::VERSION, &output.split_off(7)),
         Err(e) => {
             helpers::log_error_and_exit(
@@ -133,37 +141,8 @@ fn log_error_and_exit_on_bad_command_output(
     match_output: bool,
     bad_output_error: &str,
 ) {
-    match check_cmd_output(log, remote_info, cmd, wanted_output, match_output) {
+    match remote_info.check_cmd_output(log, cmd, wanted_output, match_output) {
         Ok(_) => (),
         Err(_) => helpers::log_error_and_exit(log, bad_output_error),
     }
-}
-
-fn check_cmd_output(
-    log: &Logger,
-    remote_info: &RemoteInfo,
-    cmd: &str,
-    wanted_output: &[String],
-    match_output: bool,
-) -> Result<String, ()> {
-    match get_cmd_output(remote_info, cmd) {
-        Ok(output) => {
-            if match_output ^ wanted_output.contains(&output) {
-                Err(())
-            } else {
-                Ok(output)
-            }
-        }
-        Err(e) => {
-            helpers::log_error_and_exit(log, &format!("Failed to run '{}' on remote: {}", cmd, e));
-            panic!(); // For compilation
-        }
-    }
-}
-
-fn get_cmd_output(remote_info: &RemoteInfo, cmd: &str) -> Result<String, io::Error> {
-    let output = remote_info
-        .generate_command(&mut remote_info.base_command(cmd), cmd)
-        .output()?;
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
 }

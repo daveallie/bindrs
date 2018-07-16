@@ -1,4 +1,7 @@
+use helpers;
 use regex::Regex;
+use slog::Logger;
+use std::io;
 use std::process::Command;
 
 pub struct RemoteInfo {
@@ -78,5 +81,43 @@ impl RemoteInfo {
 
     pub fn full_path_trailing_slash(&self) -> String {
         format!("{}/", self.full_path())
+    }
+
+    pub fn check_cmd_output(
+        &self,
+        log: &Logger,
+        cmd: &str,
+        wanted_output: &[String],
+        match_output: bool,
+    ) -> Result<String, ()> {
+        match self.get_cmd_output(cmd) {
+            Ok(output) => {
+                if match_output ^ wanted_output.contains(&output) {
+                    Err(())
+                } else {
+                    Ok(output)
+                }
+            }
+            Err(e) => {
+                helpers::log_error_and_exit(log, &format!("Failed to run '{}' on remote: {}", cmd, e));
+                panic!(); // For compilation
+            }
+        }
+    }
+
+    pub fn get_cmd_output(&self, cmd: &str) -> Result<String, io::Error> {
+        let output = self.generate_command(&mut self.base_command(cmd), cmd)
+            .output()?;
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+    }
+
+
+
+    pub fn run_cmd(&self, cmd: &str) -> bool {
+        match self.generate_command(&mut self.base_command(cmd), cmd)
+            .status() {
+            Ok(status) => status.success(),
+            Err(_) => false,
+        }
     }
 }
